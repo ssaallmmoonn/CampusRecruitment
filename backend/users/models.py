@@ -22,8 +22,14 @@ class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True, related_name='student_profile', verbose_name='关联用户')
     name = models.CharField(max_length=20, verbose_name='姓名')
     major = models.CharField(max_length=50, verbose_name='专业')
+    school = models.CharField(max_length=50, verbose_name='学校', blank=True)
     education = models.CharField(max_length=20, verbose_name='学历')
     graduation_year = models.IntegerField(null=True, blank=True, verbose_name='毕业年份')
+    
+    # New fields
+    phone = models.CharField(max_length=20, blank=True, verbose_name='电话号码')
+    email = models.EmailField(blank=True, verbose_name='邮箱', null=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name='头像')
 
     def __str__(self):
         return self.name if self.name else self.user.username
@@ -49,7 +55,7 @@ class Company(models.Model):
     address = models.CharField(max_length=200, blank=True, verbose_name='办公地点')
     
     # New fields for UI
-    logo = models.CharField(max_length=255, blank=True, null=True, verbose_name='企业Logo')
+    logo = models.ImageField(upload_to='company_logos/', max_length=255, blank=True, null=True, verbose_name='企业Logo')
     industry = models.CharField(max_length=50, blank=True, verbose_name='所属行业')
     scale = models.CharField(max_length=50, blank=True, verbose_name='人员规模')
     nature = models.CharField(max_length=50, blank=True, verbose_name='企业性质')

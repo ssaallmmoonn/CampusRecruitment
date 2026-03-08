@@ -58,3 +58,33 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
                 from django.http import Http404
                 raise Http404("Company profile not found")
         return user
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        
+        # Check if data has changed
+        has_changed = False
+        validated_data = serializer.validated_data
+        
+        # Check model fields
+        for field, value in validated_data.items():
+            if hasattr(instance, field):
+                current_value = getattr(instance, field)
+                if current_value != value:
+                    has_changed = True
+                    break
+
+        if not has_changed:
+            return Response({'message': '信息无发生更改', 'status': 'unchanged'}, status=status.HTTP_200_OK)
+
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)

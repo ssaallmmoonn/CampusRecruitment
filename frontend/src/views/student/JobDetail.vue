@@ -1,5 +1,10 @@
 <template>
   <div class="job-detail-container" v-loading="loading">
+    <div class="back-btn-container">
+      <el-button @click="$router.back()" :icon="ArrowLeft" circle />
+      <span class="back-text" @click="$router.back()">返回</span>
+    </div>
+
     <el-card class="job-detail-card" v-if="job">
       <div class="job-header">
         <div class="title-section">
@@ -15,33 +20,33 @@
       <el-divider />
 
       <div class="job-content">
-        <h3>Job Description</h3>
+        <h3>岗位描述</h3>
         <div class="content-text">{{ job.description }}</div>
 
-        <h3>Requirements</h3>
+        <h3>岗位要求</h3>
         <div class="content-text">{{ job.requirements }}</div>
         
         <div class="meta-info">
-          <span>Views: {{ job.views_count }}</span>
-          <span>Collections: {{ job.collections_count }}</span>
+          <span>浏览: {{ job.views_count }}</span>
+          <span>收藏: {{ job.collections_count }}</span>
         </div>
       </div>
 
-      <el-divider />
+      <el-divider />  
 
       <div class="action-section">
-        <el-button type="primary" size="large" @click="openApplyDialog">Apply Now</el-button>
-        <el-button size="large" @click="handleCollect" :type="isCollected ? 'warning' : ''" :icon="isCollected ? 'StarFilled' : 'Star'">{{ isCollected ? 'Collected' : 'Collect' }}</el-button>
+        <el-button type="primary" size="large" @click="openApplyDialog">投递简历</el-button>
+        <el-button size="large" @click="handleCollect" :type="isCollected ? 'warning' : ''" :icon="isCollected ? 'StarFilled' : 'Star'">{{ isCollected ? '已收藏' : '收藏' }}</el-button>
       </div>
     </el-card>
 
-    <el-empty v-else-if="!loading" description="Job not found" />
+    <el-empty v-else-if="!loading" description="未找到该职位" />
 
     <!-- Application Dialog -->
-    <el-dialog v-model="applyDialogVisible" title="Apply for Job" width="500px">
+    <el-dialog v-model="applyDialogVisible" title="投递简历" width="500px">
       <el-form :model="applyForm" label-width="100px">
-        <el-form-item label="Select Resume">
-          <el-select v-model="applyForm.resume" placeholder="Please select a resume">
+        <el-form-item label="选择简历">
+          <el-select v-model="applyForm.resume" placeholder="请选择一份简历">
             <el-option
               v-for="item in resumes"
               :key="item.id"
@@ -52,12 +57,12 @@
         </el-form-item>
       </el-form>
       <div v-if="resumes.length === 0" class="no-resume-tip">
-        You don't have any resumes yet. <router-link to="/resume">Create one now</router-link>.
+        您还没有任何简历，请先创建一份 <router-link to="/resume">创建简历</router-link>.
       </div>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="applyDialogVisible = false">Cancel</el-button>
-          <el-button type="primary" @click="handleApply" :disabled="!applyForm.resume">Confirm Apply</el-button>
+          <el-button @click="applyDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleApply" :disabled="!applyForm.resume">确认投递</el-button>
         </span>
       </template>
     </el-dialog>
@@ -68,9 +73,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getJobDetail } from '@/api/jobs'
-import { applyJob, getResumes, recordBehavior } from '@/api/recruitment'
+import { applyJob, getResumes, recordBehavior, toggleCollect, checkCollectStatus } from '@/api/recruitment'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { ArrowLeft, Star, StarFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -98,10 +104,14 @@ const fetchJobDetail = async () => {
           job: id,
           behavior_type: 1 // Browse
       })
+      
+      // Check collection status
+      const res = await checkCollectStatus({ job_id: id })
+      isCollected.value = res.collected
     }
   } catch (error) {
     console.error('Failed to fetch job detail:', error)
-    ElMessage.error('Failed to load job details')
+    ElMessage.error('加载职位详情失败')
   } finally {
     loading.value = false
   }
@@ -109,7 +119,7 @@ const fetchJobDetail = async () => {
 
 const openApplyDialog = async () => {
     if (!userStore.isLoggedIn) {
-        ElMessage.warning('Please login to apply')
+        ElMessage.warning('请先登录后再投递')
         router.push('/login')
         return
     }
@@ -118,7 +128,7 @@ const openApplyDialog = async () => {
         const res = await getResumes()
         resumes.value = res.results || res
     } catch (error) {
-        ElMessage.error('Failed to load resumes')
+        ElMessage.error('加载简历失败')
     }
 }
 
@@ -128,7 +138,7 @@ const handleApply = async () => {
           job: job.value.id,
           resume: applyForm.resume
       })
-      ElMessage.success('Application submitted successfully!')
+      ElMessage.success('简历投递成功！')
       applyDialogVisible.value = false
   } catch (error) {
       // Error handled in interceptor
@@ -137,22 +147,25 @@ const handleApply = async () => {
 
 const handleCollect = async () => {
   if (!userStore.isLoggedIn) {
-      ElMessage.warning('Please login to collect')
+      ElMessage.warning('请先登录后再收藏')
       router.push('/login')
       return
   }
 
-  if (isCollected.value) return
-  
   try {
-      await recordBehavior({
-          job: job.value.id,
-          behavior_type: 2 // Collect
-      })
-      isCollected.value = true
-      ElMessage.success('Job collected!')
+      const res = await toggleCollect({ job_id: job.value.id })
+      isCollected.value = res.collected
+      ElMessage.success(res.msg)
+      
+      // Update collection count locally
+      if (res.collected) {
+        job.value.collections_count += 1
+      } else {
+        job.value.collections_count = Math.max(0, job.value.collections_count - 1)
+      }
   } catch (error) {
-      // Error handled in interceptor
+      console.error('Toggle collect failed:', error)
+      ElMessage.error('操作失败')
   }
 }
 
@@ -172,6 +185,20 @@ onMounted(() => {
   max-width: 1000px;
   margin: 20px auto;
   padding: 0 20px;
+}
+.back-btn-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+.back-text {
+  margin-left: 10px;
+  font-size: 16px;
+  color: #606266;
+}
+.back-text:hover {
+  color: #409EFF;
 }
 .job-header {
   margin-bottom: 20px;

@@ -39,21 +39,29 @@
             <el-form-item label="邮箱">
               <el-input v-model="registerForm.email" />
             </el-form-item>
+            <el-form-item label="电话号码">
+              <el-input v-model="registerForm.phone" />
+            </el-form-item>
             
             <!-- Student Specific -->
             <template v-if="registerForm.role === 1">
                <el-form-item label="姓名">
                 <el-input v-model="registerForm.name" />
               </el-form-item>
-               <el-form-item label="专业">
+              <el-form-item label="学校">
+                <el-input v-model="registerForm.school" />
+              </el-form-item>
+              <el-form-item label="专业">
                 <el-input v-model="registerForm.major" />
               </el-form-item>
-               <el-form-item label="学历">
-                 <el-select v-model="registerForm.education">
-                    <el-option label="本科" value="Bachelor" />
-                    <el-option label="硕士" value="Master" />
-                    <el-option label="博士" value="PhD" />
-                 </el-select>
+              <el-form-item label="学历">
+                <el-select v-model="registerForm.education">
+                  <el-option label="高中及以下" value="High School" />
+                  <el-option label="大专" value="College" />
+                  <el-option label="本科" value="Bachelor" />
+                  <el-option label="硕士" value="Master" />
+                  <el-option label="博士" value="PhD" />
+                </el-select>
               </el-form-item>
                <el-form-item label="毕业年份">
                 <el-input v-model.number="registerForm.graduation_year" />
@@ -113,9 +121,11 @@ const registerForm = reactive({
   username: '',
   password: '',
   email: '',
+  phone: '',
   role: 1,
   // Student
   name: '',
+  school: '',
   major: '',
   education: 'Bachelor',
   graduation_year: new Date().getFullYear(),
@@ -140,13 +150,66 @@ const handleLogin = async () => {
 }
 
 const handleRegister = async () => {
+  // Validate form fields based on role
+  const commonFields = ['username', 'password', 'email', 'phone']
+  const studentFields = ['name', 'school', 'major', 'education', 'graduation_year']
+  const companyFields = ['company_name', 'credit_code', 'contact_person', 'contact_phone']
+
+  let isValid = true
+  
+  // Check common fields
+  for (const field of commonFields) {
+    if (!registerForm[field]) {
+      isValid = false
+      break
+    }
+  }
+
+  // Check role-specific fields
+  if (isValid) {
+    if (registerForm.role === 1) { // Student
+      for (const field of studentFields) {
+        if (!registerForm[field]) {
+          isValid = false
+          break
+        }
+      }
+    } else if (registerForm.role === 2) { // Company
+      for (const field of companyFields) {
+        if (!registerForm[field]) {
+          isValid = false
+          break
+        }
+      }
+    }
+  }
+
+  if (!isValid) {
+    ElMessage.warning('所有表单项都不能为空，请检查并填写完整。')
+    alert('所有表单项都不能为空，请检查并填写完整。')
+    return
+  }
+
   loading.value = true
   try {
     await userStore.register(registerForm)
     ElMessage.success('注册成功，请登录')
     activeTab.value = 'login'
   } catch (error) {
-     // Error handled in interceptor
+    // 处理后端返回的错误
+    if (error.response && error.response.status === 400) {
+      const data = error.response.data
+      // 检查是否是用户名重复错误
+      if (data.username) {
+        alert('已经有该用户名需要重新取名')
+      } else {
+        // 其他字段错误
+        const errorMsg = Object.values(data).flat().join('\n')
+        ElMessage.error(errorMsg || '注册信息有误，请检查')
+      }
+    } else {
+      ElMessage.error('注册失败，请稍后重试')
+    }
   } finally {
     loading.value = false
   }

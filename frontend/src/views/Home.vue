@@ -32,8 +32,8 @@
 
               <!-- Company Navigation (Keep for compatibility) -->
               <template v-if="userStore.role === 2">
-                <el-menu-item index="/company/jobs">My Jobs</el-menu-item>
-                <el-menu-item index="/company/applications">Applications</el-menu-item>
+                <el-menu-item index="/company/jobs">我的发布</el-menu-item>
+                <el-menu-item index="/company/applications">收到的投递</el-menu-item>
               </template>
             </el-menu>
           </div>
@@ -44,7 +44,7 @@
               <el-dropdown trigger="click" @command="handleCommand">
                 <div class="user-profile">
                   <el-avatar :size="32" :src="userAvatar" class="avatar" />
-                  <span class="username">{{ userStore.user.username }}</span>
+                  <span class="username">{{ userStore.userInfo?.username }}</span>
                   <el-icon class="el-icon--right"><arrow-down /></el-icon>
                 </div>
                 <template #dropdown>
@@ -63,7 +63,11 @@
       </el-header>
       
       <el-main class="main-content">
-        <router-view></router-view>
+        <router-view v-slot="{ Component }">
+          <keep-alive include="JobBoard">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </el-main>
 
       <div class="site-footer">
@@ -86,7 +90,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
 import { useRouter } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
@@ -95,15 +99,24 @@ const userStore = useUserStore()
 const router = useRouter()
 
 // Placeholder avatar
-const userAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
-const handleCommand = (command) => {
+const userAvatar = computed(() => {
+  return userStore.userInfo?.avatar || defaultAvatar
+})
+
+onMounted(() => {
+  if (userStore.isLoggedIn && !userStore.userInfo) {
+    userStore.fetchUserInfo()
+  }
+})
+
+  const handleCommand = (command) => {
   if (command === 'logout') {
     userStore.logout()
     router.push('/login')
   } else if (command === 'profile') {
-    // Navigate to profile if implemented
-    router.push('/resume') // Redirect to resume for now as a profile substitute
+    router.push('/profile')
   }
 }
 </script>
@@ -111,10 +124,20 @@ const handleCommand = (command) => {
 <style scoped>
 .common-layout {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background-color: #f5f7fa;
 }
-.main-content {
-  padding: 0;
+
+:deep(.el-container) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.el-main) {
+  flex: 1;
+  padding: 0; /* Let child views handle padding */
 }
 </style>
 <style>
@@ -201,14 +224,6 @@ const handleCommand = (command) => {
   font-size: 16px;
   color: #606266;
   margin-right: 4px;
-}
-
-.main-content {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 /* Footer Styles */

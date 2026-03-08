@@ -43,6 +43,8 @@ class JobApplicationCreateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class BehaviorSerializer(serializers.ModelSerializer):
+    job_detail = JobSerializer(source='job', read_only=True)
+
     class Meta:
         model = Behavior
         fields = '__all__'

@@ -48,3 +48,27 @@ export function recordBehavior(data) {
     data
   })
 }
+
+export function getBehaviors(params) {
+  return request({
+    url: '/recruitment/behaviors/',
+    method: 'get',
+    params
+  })
+}
+
+export function toggleCollect(data) {
+  return request({
+    url: '/recruitment/behaviors/toggle_collect/',
+    method: 'post',
+    data
+  })
+}
+
+export function checkCollectStatus(params) {
+  return request({
+    url: '/recruitment/behaviors/check_status/',
+    method: 'get',
+    params
+  })
+}

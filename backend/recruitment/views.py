@@ -104,6 +104,9 @@ class BehaviorViewSet(viewsets.ModelViewSet):
     serializer_class = BehaviorSerializer
     permission_classes = [IsStudent]
     http_method_names = ['post', 'get', 'delete'] # Only allow creating/viewing logs
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['behavior_type']
+    ordering_fields = ['create_time']
 
     def get_queryset(self):
         return Behavior.objects.filter(student=self.request.user.student_profile)
@@ -127,3 +130,49 @@ class BehaviorViewSet(viewsets.ModelViewSet):
         if behavior_type == 2:
             job.collections_count += 1
             job.save(update_fields=['collections_count'])
+
+    @action(detail=False, methods=['post'])
+    def toggle_collect(self, request):
+        """
+        Toggle collection status for a job.
+        If collected, remove collection. If not, add collection.
+        """
+        job_id = request.data.get('job_id')
+        if not job_id:
+            return Response({'error': 'job_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            job = Job.objects.get(id=job_id)
+        except Job.DoesNotExist:
+            return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        student = request.user.student_profile
+        behavior = Behavior.objects.filter(student=student, job=job, behavior_type=2).first()
+        
+        if behavior:
+            # Already collected, remove it
+            behavior.delete()
+            if job.collections_count > 0:
+                job.collections_count -= 1
+                job.save(update_fields=['collections_count'])
+            return Response({'collected': False, 'msg': '已取消收藏'})
+        else:
+            # Not collected, add it
+            Behavior.objects.create(student=student, job=job, behavior_type=2)
+            job.collections_count += 1
+            job.save(update_fields=['collections_count'])
+            return Response({'collected': True, 'msg': '收藏成功'})
+
+    @action(detail=False, methods=['get'])
+    def check_status(self, request):
+        """
+        Check if a job is collected.
+        """
+        job_id = request.query_params.get('job_id')
+        if not job_id:
+            return Response({'error': 'job_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        student = request.user.student_profile
+        is_collected = Behavior.objects.filter(student=student, job_id=job_id, behavior_type=2).exists()
+        
+        return Response({'collected': is_collected})

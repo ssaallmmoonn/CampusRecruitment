@@ -41,6 +41,11 @@ const routes = [
                 path: 'resume',
                 name: 'MyResume',
                 component: () => import('../views/student/MyResume.vue')
+            },
+            {
+                path: 'profile',
+                name: 'UserProfile',
+                component: () => import('../views/student/UserProfile.vue')
             }
         ]
     },
@@ -54,6 +59,13 @@ const routes = [
 const router = createRouter({
     history: createWebHistory(),
     routes,
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) {
+            return savedPosition
+        } else {
+            return { top: 0 }
+        }
+    }
 })
 
 // Navigation guard

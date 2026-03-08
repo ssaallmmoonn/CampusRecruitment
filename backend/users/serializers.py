@@ -12,11 +12,11 @@ class UserSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.CharField(source='user.email', read_only=True)
+    avatar = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Student
-        fields = ('user', 'username', 'email', 'name', 'major', 'education', 'graduation_year')
+        fields = ('user', 'username', 'email', 'name', 'major', 'school', 'education', 'graduation_year', 'phone', 'avatar')
         read_only_fields = ('user',)
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -35,21 +35,23 @@ class RegisterSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(choices=User.ROLE_CHOICES)
 
     # Student specific fields
-    name = serializers.CharField(required=False)
-    major = serializers.CharField(required=False)
-    education = serializers.CharField(required=False)
-    graduation_year = serializers.IntegerField(required=False)
+    name = serializers.CharField(required=False, allow_blank=True)
+    major = serializers.CharField(required=False, allow_blank=True)
+    school = serializers.CharField(required=False, allow_blank=True)
+    education = serializers.CharField(required=False, allow_blank=True)
+    graduation_year = serializers.IntegerField(required=False, allow_null=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
 
     # Company specific fields
-    company_name = serializers.CharField(required=False)
-    credit_code = serializers.CharField(required=False)
-    contact_person = serializers.CharField(required=False)
-    contact_phone = serializers.CharField(required=False)
+    company_name = serializers.CharField(required=False, allow_blank=True)
+    credit_code = serializers.CharField(required=False, allow_blank=True)
+    contact_person = serializers.CharField(required=False, allow_blank=True)
+    contact_phone = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
         fields = ('username', 'password', 'email', 'role', 
-                  'name', 'major', 'education', 'graduation_year',
+                  'name', 'major', 'school', 'education', 'graduation_year', 'phone',
                   'company_name', 'credit_code', 'contact_person', 'contact_phone')
 
     def create(self, validated_data):
@@ -66,8 +68,11 @@ class RegisterSerializer(serializers.ModelSerializer):
                 user=user,
                 name=validated_data.get('name', ''),
                 major=validated_data.get('major', ''),
+                school=validated_data.get('school', ''),
                 education=validated_data.get('education', ''),
-                graduation_year=validated_data.get('graduation_year')
+                graduation_year=validated_data.get('graduation_year'),
+                email=validated_data.get('email', ''),
+                phone=validated_data.get('phone', '')
             )
         elif role == 2:  # Company
             Company.objects.create(
