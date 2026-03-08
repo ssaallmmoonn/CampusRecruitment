@@ -2,12 +2,28 @@ from rest_framework import viewsets, permissions, filters, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
+import django_filters
 from django.db.models import Q
 from .models import Job
 from .serializers import JobSerializer, JobCreateSerializer
 from users.models import Company, User
 from users.serializers import CompanySerializer
 import random
+
+class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
+    pass
+
+class JobFilter(django_filters.FilterSet):
+    location = CharInFilter(field_name='location', lookup_expr='in')
+    
+    class Meta:
+        model = Job
+        fields = [
+            'audit_status', 'salary', 'job_type', 
+            'degree_requirement', 'experience_requirement',
+            'company__industry', 'company__nature', 'company__scale',
+            'job_category', 'major_requirement'
+        ]
 
 class IsCompanyOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -26,7 +42,7 @@ class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCompanyOrReadOnly, IsOwnerOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['location', 'audit_status', 'salary']
+    filterset_class = JobFilter
     search_fields = ['job_name', 'description', 'requirements', 'company__company_name']
     ordering_fields = ['create_time', 'views_count']
 
@@ -175,5 +191,7 @@ class DashboardViewSet(viewsets.ViewSet):
                 experience_requirement=data['exp'],
                 description=f"Job description for {data['title']}",
                 requirements=f"Requirements for {data['title']}",
-                audit_status=1
+                audit_status=1,
+                job_category=random.choice(['研发', '产品/运营', '设计', '金融', '教育', '制造', '销售', '市场', '行政']),
+                major_requirement=random.choice(['计算机类', '机械类', '电子信息类', '数学类', '物理学类', '化学类', '临床医学类', '药学类', '工商管理类', '公共管理类', '外国语言文学类', '艺术学类'])
             )

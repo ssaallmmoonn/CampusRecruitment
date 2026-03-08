@@ -26,6 +26,10 @@ class Job(models.Model):
     job_type = models.CharField(max_length=20, default='全职', verbose_name='工作性质')  # 全职/实习
     degree_requirement = models.CharField(max_length=20, default='本科', verbose_name='学历要求')  # 本科/大专/不限
     experience_requirement = models.CharField(max_length=20, default='不限', verbose_name='经验要求')  # 无经验/1-3年/不限
+    
+    # New fields for Filter
+    job_category = models.CharField(max_length=50, blank=True, verbose_name='职位分类') # e.g. '互联网/研发'
+    major_requirement = models.CharField(max_length=50, blank=True, verbose_name='专业要求') # e.g. '计算机类'
 
     def __str__(self):
         return self.job_name
