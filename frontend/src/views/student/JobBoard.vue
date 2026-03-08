@@ -53,10 +53,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { getJobs } from '@/api/jobs'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const jobs = ref([])
 
@@ -111,6 +112,9 @@ const formatDate = (dateString) => {
 }
 
 onMounted(() => {
+  if (route.query.search) {
+    searchForm.search = route.query.search
+  }
   fetchJobs()
 })
 </script>

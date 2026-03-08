@@ -22,6 +22,11 @@ class Job(models.Model):
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='发布时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
+    # New fields for UI
+    job_type = models.CharField(max_length=20, default='全职', verbose_name='工作性质')  # 全职/实习
+    degree_requirement = models.CharField(max_length=20, default='本科', verbose_name='学历要求')  # 本科/大专/不限
+    experience_requirement = models.CharField(max_length=20, default='不限', verbose_name='经验要求')  # 无经验/1-3年/不限
+
     def __str__(self):
         return self.job_name
 

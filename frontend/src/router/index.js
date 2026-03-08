@@ -28,6 +28,16 @@ const routes = [
                 component: () => import('../views/student/MyApplications.vue')
             },
             {
+                path: 'my-collections',
+                name: 'MyCollections',
+                component: () => import('../views/student/MyCollections.vue')
+            },
+            {
+                path: 'recommendations',
+                name: 'JobRecommendations',
+                component: () => import('../views/student/JobRecommendations.vue')
+            },
+            {
                 path: 'resume',
                 name: 'MyResume',
                 component: () => import('../views/student/MyResume.vue')

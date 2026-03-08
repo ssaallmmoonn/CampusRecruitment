@@ -47,6 +47,12 @@ class Company(models.Model):
     contact_phone = models.CharField(max_length=20, blank=True, verbose_name='联系电话')
     description = models.TextField(blank=True, verbose_name='企业简介')
     address = models.CharField(max_length=200, blank=True, verbose_name='办公地点')
+    
+    # New fields for UI
+    logo = models.CharField(max_length=255, blank=True, null=True, verbose_name='企业Logo')
+    industry = models.CharField(max_length=50, blank=True, verbose_name='所属行业')
+    scale = models.CharField(max_length=50, blank=True, verbose_name='人员规模')
+    nature = models.CharField(max_length=50, blank=True, verbose_name='企业性质')
 
     def __str__(self):
         return self.company_name
