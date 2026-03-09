@@ -106,15 +106,18 @@ def populate():
     Job.objects.all().delete()
 
     # 4. Generate jobs
-    print("Generating 100 mock jobs...")
-    prefixes = ['资深', '高级', '初级', '实习', '助理', '']
+    # The goal is to generate jobs for EVERY major and EVERY job category to ensure full coverage
+    print("Generating comprehensive mock jobs...")
     
-    for i in range(100):
+    # Generate at least 1 job for each major
+    print(f"Generating jobs for {len(majors)} majors...")
+    for major in majors:
         company = random.choice(companies)
-        cat = random.choice(job_cats)
-        major = random.choice(majors)
+        cat = random.choice(job_cats) # Random category for now, or could try to match
         loc = random.choice(locations)
         
+        # Determine likely prefix
+        prefixes = ['资深', '高级', '初级', '实习', '助理', '']
         title = f"{random.choice(prefixes)}{cat}"
         
         Job.objects.create(
@@ -123,8 +126,8 @@ def populate():
             salary=f"{random.randint(4, 25)}k-{random.randint(26, 60)}k" if random.random() > 0.2 else "面议",
             location=loc,
             job_type=random.choice(['全职', '实习']),
-            degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限', '博士', '高中', '中专/中技']),
-            experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限', '5-10年']),
+            degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限']),
+            experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限']),
             description=f"这是一个关于 {cat} 的职位。\n\n岗位职责：\n1. 负责{cat}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
             requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
             audit_status=1,
@@ -133,8 +136,64 @@ def populate():
             major_requirement=f"{major}及相关专业",
             views_count=random.randint(0, 5000)
         )
-    
-    print("Database population completed successfully!")
+
+    # Generate at least 1 job for each job category
+    print(f"Generating jobs for {len(job_cats)} job categories...")
+    for cat in job_cats:
+        company = random.choice(companies)
+        major = random.choice(majors)
+        loc = random.choice(locations)
+        
+        prefixes = ['资深', '高级', '初级', '实习', '助理', '']
+        title = f"{random.choice(prefixes)}{cat}"
+        
+        Job.objects.create(
+            company=company,
+            job_name=title,
+            salary=f"{random.randint(4, 25)}k-{random.randint(26, 60)}k" if random.random() > 0.2 else "面议",
+            location=loc,
+            job_type=random.choice(['全职', '实习']),
+            degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限']),
+            experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限']),
+            description=f"这是一个关于 {cat} 的职位。\n\n岗位职责：\n1. 负责{cat}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
+            requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
+            audit_status=1,
+            job_category=cat,
+            major=major,
+            major_requirement=f"{major}及相关专业",
+            views_count=random.randint(0, 5000)
+        )
+        
+    # Generate some extra random jobs to add variety
+    print("Generating 200 extra random jobs for density...")
+    for i in range(200):
+        company = random.choice(companies)
+        cat = random.choice(job_cats)
+        major = random.choice(majors)
+        loc = random.choice(locations)
+        
+        prefixes = ['资深', '高级', '初级', '实习', '助理', '']
+        title = f"{random.choice(prefixes)}{cat}"
+        
+        Job.objects.create(
+            company=company,
+            job_name=title,
+            salary=f"{random.randint(4, 25)}k-{random.randint(26, 60)}k" if random.random() > 0.2 else "面议",
+            location=loc,
+            job_type=random.choice(['全职', '实习']),
+            degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限']),
+            experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限']),
+            description=f"这是一个关于 {cat} 的职位。\n\n岗位职责：\n1. 负责{cat}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
+            requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
+            audit_status=1,
+            job_category=cat,
+            major=major,
+            major_requirement=f"{major}及相关专业",
+            views_count=random.randint(0, 5000)
+        )
+
+    total_jobs = Job.objects.count()
+    print(f"Database population completed successfully! Total jobs: {total_jobs}")
 
 if __name__ == '__main__':
     populate()

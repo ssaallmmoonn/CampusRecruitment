@@ -91,6 +91,12 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
                 if current_value != value:
                     has_changed = True
                     break
+        
+        # Check if username changed (handled separately because it's on the User model)
+        # Note: serializer.validated_data has 'user': {'username': '...'} structure due to source='user.username'
+        if 'user' in validated_data and 'username' in validated_data['user']:
+             if instance.user.username != validated_data['user']['username']:
+                 has_changed = True
 
         if not has_changed:
             return Response({'message': '信息无发生更改', 'status': 'unchanged'}, status=status.HTTP_200_OK)

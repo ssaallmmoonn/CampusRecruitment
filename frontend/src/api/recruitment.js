@@ -24,6 +24,13 @@ export function updateResume(id, data) {
   })
 }
 
+export function deleteResume(id) {
+  return request({
+    url: `/recruitment/resumes/${id}/`,
+    method: 'delete'
+  })
+}
+
 // Applications
 export function applyJob(data) {
   return request({

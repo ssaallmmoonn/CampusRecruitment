@@ -79,7 +79,7 @@
           </div>
         </div>
 
-        <div class="nav-footer">
+        <div class="nav-footer" @click="handleViewAllCategories">
           <span>{{ activeTab === 'major' ? '全部专业' : '全部职类' }}</span>
         </div>
 
@@ -89,7 +89,12 @@
             <div v-for="(subGroup, sIndex) in majorCategories[activeCategory].children" :key="sIndex" class="flyout-group">
               <div class="group-title">{{ subGroup.name }}</div>
               <div class="group-items">
-                <span v-for="(item, iIndex) in subGroup.items" :key="iIndex" class="flyout-item">
+                <span 
+                  v-for="(item, iIndex) in subGroup.items" 
+                  :key="iIndex" 
+                  class="flyout-item"
+                  @click="handleCategoryClick(item, 'major')"
+                >
                   {{ item }}
                 </span>
               </div>
@@ -103,7 +108,12 @@
             <div v-for="(subGroup, sIndex) in jobCategories[activeJobCategory].children" :key="sIndex" class="flyout-group">
               <div class="group-title">{{ subGroup.name }}</div>
               <div class="group-items">
-                <span v-for="(item, iIndex) in subGroup.items" :key="iIndex" class="flyout-item">
+                <span 
+                  v-for="(item, iIndex) in subGroup.items" 
+                  :key="iIndex" 
+                  class="flyout-item"
+                  @click="handleCategoryClick(item, 'job')"
+                >
                   {{ item }}
                 </span>
               </div>
@@ -346,6 +356,42 @@ const handleViewMoreJobs = () => {
     router.push('/login')
     return
   }
+  router.push('/jobs')
+}
+
+const handleViewAllCategories = () => {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再访问该功能')
+    router.push('/login')
+    return
+  }
+  
+  // Navigate to jobs page with the current tab filter activated
+  // If activeTab is 'major', we want to show major filter. If 'job', show job filter.
+  // The JobBoard component handles this via activeFilterTab ref, but we need to pass a signal.
+  // Since activeFilterTab in JobBoard defaults to 'major', we can pass a query param to switch it if needed.
+  // Or just go to /jobs and let user switch.
+  // Requirement says "jump to job search interface".
+  
+  const query = {}
+  if (activeTab.value === 'job') {
+      // If we want to default to job tab in JobBoard, we might need to add logic there to read a query param
+      // or just pass a dummy filter to activate the tab?
+      // Let's check JobBoard logic: 
+      // if (query.job_category) activeFilterTab.value = 'job'
+      // So if we pass job_category='', it might not switch tab because of check `if (query.job_category)`.
+      // Let's just go to /jobs for now, or maybe pass a special flag?
+      // Actually, simply navigating to /jobs is usually enough for "All Majors/All Jobs".
+      // But if user is on "Job Category" tab in dashboard, maybe they expect "Job Category" tab in search?
+      // Let's keep it simple: go to /jobs. The user can switch tabs there.
+      // But to be precise: "All Majors" button -> /jobs (defaults to major tab)
+      // "All Jobs" button -> /jobs (but ideally switch to job tab?)
+      
+      // Let's add a small hack: pass a query param 'tab=job' if we want to switch tab?
+      // JobBoard doesn't support 'tab' query param yet.
+      // Let's just navigate to /jobs for now as per basic requirement.
+  }
+  
   router.push('/jobs')
 }
 

@@ -568,12 +568,32 @@ const handleFilterChange = (key, value) => {
       const index = searchForm.location.indexOf(value)
       if (index === -1) {
         searchForm.location.push(value)
+        // Optimization: Move selected location to front if not in topLocations
+        if (!filterOptions.locations.includes(value)) {
+           filterOptions.locations.pop()
+           filterOptions.locations.unshift(value)
+        }
       } else {
         searchForm.location.splice(index, 1)
       }
     }
   } else if (typeof key === 'string') {
     searchForm[key] = value
+
+    // Logic to move selected item to front for Major and Job Category
+    if (key === 'major' && value) {
+      if (!filterOptions.majorCategories.includes(value)) {
+        // Remove the last item to keep length consistent
+        filterOptions.majorCategories.pop()
+        // Add new item to the front
+        filterOptions.majorCategories.unshift(value)
+      }
+    } else if (key === 'job_category' && value) {
+      if (!filterOptions.jobCategories.includes(value)) {
+        filterOptions.jobCategories.pop()
+        filterOptions.jobCategories.unshift(value)
+      }
+    }
   }
   
   currentPage.value = 1
@@ -697,13 +717,88 @@ onMounted(() => {
   }
   
   // Handle search query
-  if (query.search) {
-    searchForm.search = query.search
+  // Reset all filters first for every onMounted to ensure clean state if navigating from other pages
+  // But wait, if I reload page, query params are there, so it's fine.
+  // If I navigate from Dashboard with query, it's fine.
+  // If I navigate from "Search" box in Dashboard, it has query.
+  // If I click "Job Board" in nav, it has NO query.
+  // So if NO query params are present, we should clear everything?
+  // The current code initializes searchForm with empty values.
+  // Then it overwrites them IF query params exist.
+  // So if query params are empty, searchForm stays empty.
+  // This already meets the requirement: "when navigating to other pages and back... if filter has conditions... clear them"
+  // Wait, if I go to Detail page and come back?
+  // If I use router.push('/jobs'), query is empty -> filters cleared.
+  // If I use "Back" button, browser restores state? Vue Router might keep component alive?
+  // If component is not kept alive, onMounted runs again.
+  // If I navigate to /company/1 and then click "Jobs" in menu -> /jobs (no query) -> filters cleared.
+  // If I navigate to /company/1 and click "Back" -> /jobs?major=... -> filters restored (correct).
+  
+  // Requirement: "When job search page has selected conditions, jumping to OTHER pages, clear these conditions. Re-entering job search page... filter is empty."
+  // This implies we should NOT persist state in store or keep-alive.
+  // Since we are using local reactive `searchForm` and `onMounted` parses `route.query`, 
+  // If we navigate to another page (e.g. Home) and then click "Job Search" menu (which links to /jobs), 
+  // `route.query` will be empty, so `searchForm` will be empty.
+  // So this is ALREADY the default behavior.
+  
+  // However, `watch` handles route updates.
+  // Let's ensure `onMounted` logic is robust.
+  
+  // Check if we need to explicitly clear if query is empty?
+  // Yes, if `searchForm` has default values (it doesn't, all empty strings/arrays).
+  
+  const queryParams = route.query
+  if (queryParams.search) searchForm.search = queryParams.search
+  if (queryParams.location) searchForm.location = queryParams.location.split(',')
+  if (queryParams.job_type) searchForm.job_type = queryParams.job_type
+  if (queryParams.degree_requirement) searchForm.degree_requirement = queryParams.degree_requirement
+  if (queryParams.experience_requirement) searchForm.experience_requirement = queryParams.experience_requirement
+  if (queryParams.company__industry) searchForm.company__industry = queryParams.company__industry
+  if (queryParams.company__nature) searchForm.company__nature = queryParams.company__nature
+  if (queryParams.company__scale) searchForm.company__scale = queryParams.company__scale
+  
+  // Fix: Only set major/job_category if present. 
+  // If not present, activeFilterTab defaults to 'major' (line 492).
+  // Is this desired? Yes.
+  
+  if (queryParams.major) {
+    searchForm.major = queryParams.major
+    activeFilterTab.value = 'major'
+  }
+  if (queryParams.job_category) {
+    searchForm.job_category = queryParams.job_category
+    activeFilterTab.value = 'job'
   }
   
-  if (query.page) currentPage.value = parseInt(query.page)
-  if (query.page_size) pageSize.value = parseInt(query.page_size)
+  if (queryParams.page) currentPage.value = parseInt(queryParams.page)
+  if (queryParams.page_size) pageSize.value = parseInt(queryParams.page_size)
   
+  // Apply optimizations for initial load if major/job_category/location is present in query
+  if (queryParams.major) {
+      if (!filterOptions.majorCategories.includes(queryParams.major)) {
+        filterOptions.majorCategories.pop()
+        filterOptions.majorCategories.unshift(queryParams.major)
+      }
+      activeFilterTab.value = 'major'
+  }
+  if (queryParams.job_category) {
+      if (!filterOptions.jobCategories.includes(queryParams.job_category)) {
+        filterOptions.jobCategories.pop()
+        filterOptions.jobCategories.unshift(queryParams.job_category)
+      }
+      activeFilterTab.value = 'job'
+  }
+  if (queryParams.location) {
+      const locs = queryParams.location.split(',')
+      if (locs.length > 0) {
+          const firstLoc = locs[0]
+          if (!filterOptions.locations.includes(firstLoc)) {
+            filterOptions.locations.pop()
+            filterOptions.locations.unshift(firstLoc)
+          }
+      }
+  }
+
   fetchJobs()
 })
 
@@ -711,14 +806,8 @@ onMounted(() => {
 watch(
   () => route.query,
   (newQuery) => {
-    // If navigating to /jobs without query params (or just page), we might want to clear filters?
-    // User requirement: "When leaving the job search interface, the residual screening of the job search page is cleared."
-    // This implies when *leaving* and coming back? Or when navigating *to* it fresh?
-    // If I click "Software Engineering" on Dashboard -> /jobs?search=Software Engineering.
-    // Filters should be set.
-    // If I then go to Dashboard and come back to /jobs (no query), filters should be empty.
-    
-    // Reset all filters first
+    // Reset all filters first - CRITICAL for "Clear conditions when re-entering"
+    // If newQuery is empty (e.g. clicking "Job Board" link), this clears everything.
     searchForm.search = ''
     searchForm.location = []
     searchForm.job_type = ''
@@ -727,8 +816,13 @@ watch(
     searchForm.company__industry = ''
     searchForm.company__nature = ''
     searchForm.company__scale = ''
-    searchForm.major_requirement = ''
+    searchForm.major = ''
     searchForm.job_category = ''
+    
+    // Reset active tab to default unless specified?
+    // If I go from ?major=X to /jobs, should tab stay 'major'? 
+    // Usually yes, or reset to default. 
+    // Let's keep current tab unless query specifies otherwise.
 
     // Apply new query params
     if (newQuery.search) searchForm.search = newQuery.search
@@ -739,6 +833,7 @@ watch(
     if (newQuery.company__industry) searchForm.company__industry = newQuery.company__industry
     if (newQuery.company__nature) searchForm.company__nature = newQuery.company__nature
     if (newQuery.company__scale) searchForm.company__scale = newQuery.company__scale
+    
     if (newQuery.major) {
       searchForm.major = newQuery.major
       activeFilterTab.value = 'major'
@@ -748,9 +843,23 @@ watch(
       activeFilterTab.value = 'job'
     }
     
+    // Optimization for filter row display
+    if (newQuery.major) {
+       if (!filterOptions.majorCategories.includes(newQuery.major)) {
+          filterOptions.majorCategories.pop()
+          filterOptions.majorCategories.unshift(newQuery.major)
+       }
+    }
+    if (newQuery.job_category) {
+       if (!filterOptions.jobCategories.includes(newQuery.job_category)) {
+          filterOptions.jobCategories.pop()
+          filterOptions.jobCategories.unshift(newQuery.job_category)
+       }
+    }
+    
     currentPage.value = newQuery.page ? parseInt(newQuery.page) : 1
     
-  fetchJobs()
+    fetchJobs()
   }
 )
 </script>

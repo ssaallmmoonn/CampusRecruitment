@@ -35,10 +35,18 @@
         <!-- Basic Info -->
         <el-row :gutter="20">
           <el-col :span="12">
+            <el-form-item label="用户名" prop="username">
+              <el-input v-model="form.username" placeholder="请输入用户名" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="姓名" prop="name">
               <el-input v-model="form.name" placeholder="请输入姓名" />
             </el-form-item>
           </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="学历" prop="education">
               <el-select v-model="form.education" placeholder="请选择学历" style="width: 100%">
@@ -187,6 +195,7 @@ const passwordRules = reactive({
 
 const form = reactive({
   avatar: null, // Now stores file object or URL
+  username: '',
   name: '',
   education: '',
   school: '',
@@ -203,6 +212,7 @@ const avatarFile = ref(null) // For upload
 const originalData = ref({})
 
 const rules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   education: [{ required: true, message: '请选择学历', trigger: 'change' }],
   school: [{ required: true, message: '请输入学校', trigger: 'blur' }],
@@ -272,6 +282,25 @@ const handleUpdate = async () => {
   
   await profileFormRef.value.validate(async (valid, fields) => {
     if (valid) {
+      // Check for changes locally
+      let hasChanges = false
+      if (avatarFile.value) {
+        hasChanges = true
+      } else {
+        for (const key of Object.keys(form)) {
+          if (key === 'avatar') continue
+          if (form[key] !== originalData.value[key]) {
+            hasChanges = true
+            break
+          }
+        }
+      }
+
+      if (!hasChanges) {
+        ElMessage.info('信息无修改')
+        return
+      }
+
       submitting.value = true
       try {
         const formData = new FormData()
@@ -291,18 +320,11 @@ const handleUpdate = async () => {
             }
         })
         
-        if (response.status === 'unchanged') {
-            ElMessageBox.alert('信息无发生更改', '提示', {
-            confirmButtonText: '确定',
-            type: 'info'
-          })
-        } else {
-          ElMessage.success('修改信息成功')
-          // Update original data
-          originalData.value = JSON.parse(JSON.stringify(form))
-          originalData.value.avatarUrl = avatarUrl.value
-          avatarFile.value = null // Reset file input
-        }
+        ElMessage.success('修改信息成功')
+        // Update original data
+        originalData.value = JSON.parse(JSON.stringify(form))
+        originalData.value.avatarUrl = avatarUrl.value
+        avatarFile.value = null // Reset file input
       } catch (error) {
         console.error('Error updating profile:', error)
         if (error.response && error.response.data) {

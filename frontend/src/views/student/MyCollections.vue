@@ -26,19 +26,17 @@
           <el-card shadow="hover" class="job-card" @click="viewDetail(item.job_detail.id)">
             <div class="job-content">
               <div class="job-header">
-                <h3 class="job-title">{{ item.job_detail.job_name }}</h3>
+                <div class="title-row">
+                  <h3 class="job-title">{{ item.job_detail.job_name }}</h3>
+                  <el-tag size="small" effect="plain" class="location-tag">{{ item.job_detail.location }}</el-tag>
+                </div>
                 <span class="salary">{{ item.job_detail.salary }}</span>
               </div>
               
               <div class="job-tags-row">
-                <span class="tag-item">{{ item.job_detail.job_type }}</span>
-                <span class="tag-item">{{ item.job_detail.degree_requirement }}</span>
-                <span class="tag-item">{{ item.job_detail.experience_requirement }}</span>
-              </div>
-
-              <div class="job-meta">
-                <el-tag size="small" effect="plain">{{ item.job_detail.location }}</el-tag>
-                <span class="separator">|</span>
+                <span class="tag-item" v-if="item.job_detail.job_type">{{ item.job_detail.job_type }}</span>
+                <span class="tag-item" v-if="item.job_detail.degree_requirement">{{ item.job_detail.degree_requirement }}</span>
+                <span class="tag-item" v-if="item.job_detail.experience_requirement">{{ item.job_detail.experience_requirement }}</span>
                 <span class="time">收藏于 {{ formatDate(item.create_time) }}</span>
               </div>
             </div>
@@ -242,11 +240,35 @@ onMounted(() => {
   margin-bottom: 10px;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .job-title {
   font-size: 18px;
   font-weight: bold;
   color: #303133;
   margin: 0;
+}
+
+.location-tag {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 14px;
+  color: #3e81e6;
+}
+
+.location-tag::before {
+  content: '[';
+  margin-right: 2px;
+}
+
+.location-tag::after {
+  content: ']';
+  margin-left: 2px;
 }
 
 .salary {
@@ -259,6 +281,7 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  align-items: center;
 }
 
 .tag-item {
@@ -269,21 +292,10 @@ onMounted(() => {
   border-radius: 4px;
 }
 
-.job-meta {
-  margin-bottom: 10px;
-  color: #909399;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-}
-
-.separator {
-  margin: 0 8px;
-  color: #dcdfe6;
-}
-
 .time {
   margin-left: auto;
+  color: #909399;
+  font-size: 12px;
 }
 
 .job-footer {

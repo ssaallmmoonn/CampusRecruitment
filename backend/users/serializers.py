@@ -27,13 +27,33 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'date_joined', 'role')
 
 class StudentSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', read_only=True)
+    username = serializers.CharField(source='user.username')
     avatar = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Student
         fields = ('user', 'username', 'email', 'name', 'major', 'school', 'education', 'graduation_year', 'phone', 'avatar')
         read_only_fields = ('user',)
+    
+    def validate_username(self, value):
+        request = self.context.get('request')
+        if request and request.user:
+            user = request.user
+            if User.objects.exclude(pk=user.pk).filter(username=value).exists():
+                raise serializers.ValidationError("该用户名已存在")
+        return value
+
+    def update(self, instance, validated_data):
+        # Handle nested user data (username)
+        # DRF source='user.username' puts the data in 'user': {'username': '...'}
+        user_data = validated_data.pop('user', {})
+        username = user_data.get('username')
+        
+        if username and username != instance.user.username:
+            instance.user.username = username
+            instance.user.save()
+            
+        return super().update(instance, validated_data)
 
 class CompanySerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='user.id', read_only=True)
