@@ -16,16 +16,20 @@ export const useUserStore = defineStore('user', {
     async login(username, password) {
       try {
         const res = await request.post('/users/login/', { username, password })
-        this.token = res.access
-        this.user = { username: res.username, role: res.role, id: res.id }
-        
-        localStorage.setItem('token', this.token)
-        localStorage.setItem('user', JSON.stringify(this.user))
-        
-        // Fetch detailed user info
-        await this.fetchUserInfo()
+        if (res.access) {
+          this.token = res.access
+          this.user = { username: res.username, role: res.role, id: res.id }
+          
+          localStorage.setItem('token', this.token)
+          localStorage.setItem('user', JSON.stringify(this.user))
+          
+          // Fetch detailed user info
+          await this.fetchUserInfo()
 
-        return res
+          return res
+        } else {
+          throw new Error('Login failed: No access token received')
+        }
       } catch (error) {
         throw error
       }

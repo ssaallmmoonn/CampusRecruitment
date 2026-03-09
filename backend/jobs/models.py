@@ -20,7 +20,7 @@ class Job(models.Model):
         ('学历不限', '学历不限'),
     )
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='jobs', verbose_name='发布企业')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='jobs', verbose_name='发布企业', null=True)
     job_name = models.CharField(max_length=50, verbose_name='职位名称')
     salary = models.CharField(max_length=20, verbose_name='薪资')
     location = models.CharField(max_length=50, verbose_name='工作地点')
@@ -39,8 +39,9 @@ class Job(models.Model):
     experience_requirement = models.CharField(max_length=20, default='不限', verbose_name='经验要求')  # 无经验/1-3年/不限
     
     # New fields for Filter
-    job_category = models.CharField(max_length=50, blank=True, verbose_name='职位分类') # e.g. '互联网/研发'
-    major_requirement = models.CharField(max_length=50, blank=True, verbose_name='专业要求') # e.g. '计算机类'
+    job_category = models.CharField(max_length=50, blank=True, verbose_name='职位分类') # e.g. 'Java开发'
+    major = models.CharField(max_length=50, blank=True, verbose_name='专业分类') # e.g. '软件工程'
+    major_requirement = models.CharField(max_length=50, blank=True, verbose_name='专业要求') # Legacy, or text description
 
     def __str__(self):
         return self.job_name

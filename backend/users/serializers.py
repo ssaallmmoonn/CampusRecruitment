@@ -101,3 +101,18 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
         
         return user
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializer for password change endpoint.
+    """
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({"confirm_password": "两次输入的密码不一致"})
+        if data['new_password'] == data['old_password']:
+             raise serializers.ValidationError({"new_password": "新密码不能与旧密码相同"})
+        return data

@@ -360,7 +360,7 @@ const handleCategoryClick = (category, type) => {
   const query = {}
   if (type === 'major') {
     // Pass as major_requirement filter instead of search
-    query.major_requirement = category
+    query.major = category
   } else if (type === 'job') {
     // Pass as job_category filter instead of search
     query.job_category = category

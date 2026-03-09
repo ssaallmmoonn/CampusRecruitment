@@ -95,11 +95,45 @@
           <el-button type="primary" @click="handleUpdate" :loading="submitting">
             修改信息
           </el-button>
+          <el-button type="warning" @click="showPasswordDialog">修改密码</el-button>
           <el-button @click="resetForm">重置</el-button>
           <el-button @click="$router.back()">返回</el-button>
         </div>
       </el-form>
     </el-card>
+
+    <!-- Change Password Dialog -->
+    <el-dialog
+      v-model="passwordDialogVisible"
+      title="修改密码"
+      width="400px"
+      :before-close="handlePasswordDialogClose"
+    >
+      <el-form
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-width="100px"
+      >
+        <el-form-item label="旧密码" prop="old_password">
+          <el-input v-model="passwordForm.old_password" type="password" show-password placeholder="请输入旧密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="new_password">
+          <el-input v-model="passwordForm.new_password" type="password" show-password placeholder="请输入新密码" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirm_password">
+          <el-input v-model="passwordForm.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="passwordDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitPasswordChange" :loading="passwordSubmitting">
+            确认修改
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -118,6 +152,38 @@ const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726
 const loading = ref(false)
 const submitting = ref(false)
 const profileFormRef = ref(null)
+
+// Password Change State
+const passwordDialogVisible = ref(false)
+const passwordSubmitting = ref(false)
+const passwordFormRef = ref(null)
+
+const passwordForm = reactive({
+  old_password: '',
+  new_password: '',
+  confirm_password: ''
+})
+
+const passwordRules = reactive({
+  old_password: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+  new_password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+  ],
+  confirm_password: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== passwordForm.new_password) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+})
 
 const form = reactive({
   avatar: null, // Now stores file object or URL
@@ -257,6 +323,54 @@ const handleUpdate = async () => {
 
 const resetForm = () => {
   Object.assign(form, JSON.parse(JSON.stringify(originalData.value)))
+}
+
+const showPasswordDialog = () => {
+  passwordDialogVisible.value = true
+  if (passwordFormRef.value) {
+    passwordFormRef.value.resetFields()
+  }
+  passwordForm.old_password = ''
+  passwordForm.new_password = ''
+  passwordForm.confirm_password = ''
+}
+
+const handlePasswordDialogClose = (done) => {
+    if (passwordFormRef.value) {
+        passwordFormRef.value.resetFields()
+    }
+    done()
+}
+
+const submitPasswordChange = async () => {
+  if (!passwordFormRef.value) return
+  
+  await passwordFormRef.value.validate(async (valid) => {
+    if (valid) {
+      passwordSubmitting.value = true
+      try {
+        await request.put('/users/change-password/', passwordForm)
+        ElMessage.success('密码修改成功，请重新登录')
+        passwordDialogVisible.value = false
+        // Logout and redirect
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        userStore.user = null
+        userStore.token = null
+        router.push('/login')
+      } catch (error) {
+        console.error('Change password error:', error)
+         if (error.response && error.response.data) {
+             const msg = Object.values(error.response.data).flat().join('; ')
+             ElMessage.error(msg || '修改失败，请重试')
+        } else {
+            ElMessage.error('修改失败，请重试')
+        }
+      } finally {
+        passwordSubmitting.value = false
+      }
+    }
+  })
 }
 
 onMounted(() => {

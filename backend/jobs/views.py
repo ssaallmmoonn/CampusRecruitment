@@ -18,6 +18,8 @@ class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
 
 class JobFilter(django_filters.FilterSet):
     location = CharInFilter(field_name='location', lookup_expr='in')
+    job_category = django_filters.CharFilter(lookup_expr='icontains')
+    major = django_filters.CharFilter(lookup_expr='icontains')
     
     class Meta:
         model = Job
@@ -25,7 +27,7 @@ class JobFilter(django_filters.FilterSet):
             'company', 'location', 'audit_status', 'salary', 'job_type', 
             'degree_requirement', 'experience_requirement',
             'company__industry', 'company__nature', 'company__scale',
-            'job_category', 'major_requirement'
+            'job_category', 'major'
         ]
 
 class IsCompanyOrReadOnly(permissions.BasePermission):
@@ -43,11 +45,22 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCompanyOrReadOnly, IsOwnerOrReadOnly]
+    # Allow any user to read (list/retrieve) jobs, but only authenticated companies/owners to write
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly] 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = JobFilter
     search_fields = ['job_name', 'description', 'requirements', 'company__company_name']
     ordering_fields = ['create_time', 'views_count']
+
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['list', 'retrieve', 'company_categories']:
+            return [permissions.AllowAny()]
+        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsCompanyOrReadOnly(), IsOwnerOrReadOnly()]
+        return [permissions.IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -106,6 +119,9 @@ class JobViewSet(viewsets.ModelViewSet):
 
 class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        return [permissions.AllowAny()]
 
     @action(detail=False, methods=['get'], url_path='brand-zone')
     def brand_zone(self, request):
@@ -220,6 +236,7 @@ class DashboardViewSet(viewsets.ViewSet):
                 requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
                 audit_status=1,
                 job_category=cat,
-                major_requirement=major,
+                major=major,
+                major_requirement=f"{major}及相关专业",
                 views_count=random.randint(0, 5000)
             )

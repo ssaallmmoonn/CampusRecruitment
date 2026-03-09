@@ -3,7 +3,7 @@ from users.models import Student
 from jobs.models import Job
 
 class Resume(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='resumes', verbose_name='所属学生')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='resumes', verbose_name='所属学生', null=True)
     resume_name = models.CharField(max_length=50, verbose_name='简历名称')
     content = models.JSONField(verbose_name='简历内容') # Store as JSON: basic info, projects, skills, etc.
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
@@ -23,8 +23,8 @@ class Behavior(models.Model):
         (3, '投递'),
     )
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, verbose_name='学生')
-    job = models.ForeignKey(Job, on_delete=models.CASCADE, verbose_name='职位')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, verbose_name='学生', null=True)
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, verbose_name='职位', null=True)
     behavior_type = models.PositiveSmallIntegerField(choices=BEHAVIOR_TYPE_CHOICES, verbose_name='行为类型')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='行为时间')
 
@@ -49,8 +49,8 @@ class JobApplication(models.Model):
         (3, '不合适'),
     )
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='applications', verbose_name='学生')
-    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='applications', verbose_name='职位')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='applications', verbose_name='学生', null=True)
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='applications', verbose_name='职位', null=True)
     resume = models.ForeignKey(Resume, on_delete=models.SET_NULL, null=True, verbose_name='投递简历')
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0, verbose_name='申请状态')
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='投递时间')

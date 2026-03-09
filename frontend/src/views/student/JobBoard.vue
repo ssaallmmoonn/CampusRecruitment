@@ -40,23 +40,23 @@
           <div class="filter-options">
             <span 
               class="filter-option" 
-              :class="{ active: !searchForm.major_requirement }" 
-              @click="handleFilterChange('major_requirement', '')"
+              :class="{ active: !searchForm.major }" 
+              @click="handleFilterChange('major', '')"
             >不限</span>
             <span 
               v-for="major in filterOptions.majorCategories" 
               :key="major"
               class="filter-option"
-              :class="{ active: searchForm.major_requirement === major }"
-              @click="handleFilterChange('major_requirement', major)"
+              :class="{ active: searchForm.major === major }"
+              @click="handleFilterChange('major', major)"
             >
               {{ major }}
             </span>
              <span 
-              v-if="searchForm.major_requirement && !filterOptions.majorCategories.includes(searchForm.major_requirement)"
+              v-if="searchForm.major && !filterOptions.majorCategories.includes(searchForm.major)"
               class="filter-option active"
             >
-              {{ searchForm.major_requirement }}
+              {{ searchForm.major }}
             </span>
           </div>
         </div>
@@ -103,8 +103,8 @@
                   v-for="l3 in selectedMajorL2['三级分类']" 
                   :key="l3" 
                   class="popup-item"
-                  :class="{ active: searchForm.major_requirement === l3 }"
-                  @click="handleFilterChange('major_requirement', l3); showMajorPopup = false"
+                  :class="{ active: searchForm.major === l3 }"
+                  @click="handleFilterChange('major', l3); showMajorPopup = false"
                 >
                   {{ l3 }}
                 </div>
@@ -380,8 +380,8 @@
           <el-tag v-if="searchForm.company__scale && searchForm.company__scale !== ''" closable @close="handleFilterChange('company__scale', '')">
             规模: {{ searchForm.company__scale }}
           </el-tag>
-          <el-tag v-if="searchForm.major_requirement && searchForm.major_requirement !== ''" closable @close="handleFilterChange('major_requirement', '')">
-            专业: {{ searchForm.major_requirement }}
+          <el-tag v-if="searchForm.major && searchForm.major !== ''" closable @close="handleFilterChange('major', '')">
+            专业: {{ searchForm.major }}
           </el-tag>
           <el-tag v-if="searchForm.job_category && searchForm.job_category !== ''" closable @close="handleFilterChange('job_category', '')">
             类别: {{ searchForm.job_category }}
@@ -544,7 +544,7 @@ const searchForm = reactive({
   company__industry: '',
   company__nature: '',
   company__scale: '',
-  major_requirement: '',
+  major: '',
   job_category: ''
 })
 
@@ -556,7 +556,7 @@ const hasActiveFilters = computed(() => {
          searchForm.company__industry || 
          searchForm.company__nature || 
          searchForm.company__scale ||
-         searchForm.major_requirement ||
+         searchForm.major ||
          searchForm.job_category
 })
 
@@ -588,7 +588,7 @@ const clearFilters = () => {
   searchForm.company__industry = ''
   searchForm.company__nature = ''
   searchForm.company__scale = ''
-  searchForm.major_requirement = ''
+  searchForm.major = ''
   searchForm.job_category = ''
   handleSearch()
 }
@@ -605,7 +605,7 @@ const fetchJobs = async () => {
       company__industry: searchForm.company__industry,
       company__nature: searchForm.company__nature,
       company__scale: searchForm.company__scale,
-      major_requirement: searchForm.major_requirement,
+      major: searchForm.major,
       job_category: searchForm.job_category,
       ordering: '-create_time',
       page: currentPage.value,
@@ -687,8 +687,8 @@ onMounted(() => {
   if (query.company__nature) searchForm.company__nature = query.company__nature
   if (query.company__scale) searchForm.company__scale = query.company__scale
 
-  if (query.major_requirement) {
-    searchForm.major_requirement = query.major_requirement
+  if (query.major) {
+    searchForm.major = query.major
     activeFilterTab.value = 'major'
   }
   if (query.job_category) {
@@ -739,8 +739,8 @@ watch(
     if (newQuery.company__industry) searchForm.company__industry = newQuery.company__industry
     if (newQuery.company__nature) searchForm.company__nature = newQuery.company__nature
     if (newQuery.company__scale) searchForm.company__scale = newQuery.company__scale
-    if (newQuery.major_requirement) {
-      searchForm.major_requirement = newQuery.major_requirement
+    if (newQuery.major) {
+      searchForm.major = newQuery.major
       activeFilterTab.value = 'major'
     }
     if (newQuery.job_category) {

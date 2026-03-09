@@ -129,7 +129,8 @@ def populate():
             requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
             audit_status=1,
             job_category=cat,
-            major_requirement=major,
+            major=major,
+            major_requirement=f"{major}及相关专业",
             views_count=random.randint(0, 5000)
         )
     
