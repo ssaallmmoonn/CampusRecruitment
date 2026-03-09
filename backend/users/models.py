@@ -19,11 +19,21 @@ class User(AbstractUser):
         verbose_name_plural = verbose_name
 
 class Student(models.Model):
+    DEGREE_CHOICES = (
+        ('初中及以下', '初中及以下'),
+        ('高中', '高中'),
+        ('中专/中技', '中专/中技'),
+        ('大专', '大专'),
+        ('本科', '本科'),
+        ('硕士', '硕士'),
+        ('博士', '博士'),
+    )
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True, related_name='student_profile', verbose_name='关联用户')
     name = models.CharField(max_length=20, verbose_name='姓名')
     major = models.CharField(max_length=50, verbose_name='专业')
     school = models.CharField(max_length=50, verbose_name='学校', blank=True)
-    education = models.CharField(max_length=20, verbose_name='学历')
+    education = models.CharField(max_length=20, choices=DEGREE_CHOICES, verbose_name='学历')
     graduation_year = models.IntegerField(null=True, blank=True, verbose_name='毕业年份')
     
     # New fields

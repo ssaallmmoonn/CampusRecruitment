@@ -1,27 +1,10 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from .serializers import RegisterSerializer, MyTokenObtainPairSerializer, UserSerializer, StudentSerializer, CompanySerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth import get_user_model
-from .serializers import RegisterSerializer, UserSerializer, StudentSerializer, CompanySerializer
-from .models import Student, Company
-
-User = get_user_model()
-
-class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token['role'] = user.role
-        token['username'] = user.username
-        return token
-
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        data['role'] = self.user.role
-        data['username'] = self.user.username
-        data['id'] = self.user.id
-        return data
+from .models import Student, Company, User
+from django.shortcuts import get_object_or_404
+import random
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
@@ -88,3 +71,23 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
             instance._prefetched_objects_cache = {}
 
         return Response(serializer.data)
+
+class CompanyPublicView(generics.RetrieveAPIView):
+    """
+    Public view for company details
+    """
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    permission_classes = (permissions.AllowAny,)
+    lookup_field = 'id'
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        # The frontend passes user_id as company_id because in JobSerializer, 
+        # company.id is mapped to company.user.id.
+        # So we need to look up the company by its related user's ID.
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        filter_kwargs = {'user__id': self.kwargs[lookup_url_kwarg]}
+        obj = get_object_or_404(queryset, **filter_kwargs)
+        self.check_object_permissions(self.request, obj)
+        return obj

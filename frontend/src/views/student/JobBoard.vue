@@ -36,62 +36,225 @@
       <!-- Category Filter Row (Dynamic) -->
       <div class="filter-row" v-if="activeFilterTab === 'major'">
         <span class="filter-label">专业分类</span>
-        <div class="filter-options">
-          <span 
-            class="filter-option" 
-            :class="{ active: !searchForm.major_requirement }" 
-            @click="handleFilterChange('major_requirement', '')"
-          >不限</span>
-          <span 
-            v-for="cat in filterOptions.majorCategories" 
-            :key="cat.name"
-            class="filter-option"
-            :class="{ active: searchForm.major_requirement === cat.name }"
-            @click="handleFilterChange('major_requirement', cat.name)"
+        <div class="filter-options-container">
+          <div class="filter-options">
+            <span 
+              class="filter-option" 
+              :class="{ active: !searchForm.major_requirement }" 
+              @click="handleFilterChange('major_requirement', '')"
+            >不限</span>
+            <span 
+              v-for="major in filterOptions.majorCategories" 
+              :key="major"
+              class="filter-option"
+              :class="{ active: searchForm.major_requirement === major }"
+              @click="handleFilterChange('major_requirement', major)"
+            >
+              {{ major }}
+            </span>
+             <span 
+              v-if="searchForm.major_requirement && !filterOptions.majorCategories.includes(searchForm.major_requirement)"
+              class="filter-option active"
+            >
+              {{ searchForm.major_requirement }}
+            </span>
+          </div>
+        </div>
+        
+        <!-- More Button -->
+        <div class="filter-more-wrapper">
+          <el-popover
+            v-model:visible="showMajorPopup"
+            placement="bottom-start"
+            :width="800"
+            trigger="click"
+            popper-class="filter-popup"
           >
-            {{ cat.name }}
-          </span>
+            <template #reference>
+              <span class="filter-more-btn">
+                更多专业 <el-icon><ArrowRight /></el-icon>
+              </span>
+            </template>
+            <div class="popup-content">
+              <div class="popup-column l1">
+                <div 
+                  v-for="l1 in allMajors" 
+                  :key="l1['一级分类']" 
+                  class="popup-item"
+                  :class="{ active: selectedMajorL1 === l1 }"
+                  @mouseenter="selectedMajorL1 = l1; selectedMajorL2 = null"
+                >
+                  {{ l1['一级分类'] }} <el-icon><ArrowRight /></el-icon>
+                </div>
+              </div>
+              <div class="popup-column l2" v-if="selectedMajorL1">
+                <div 
+                  v-for="l2 in selectedMajorL1['二级分类列表']" 
+                  :key="l2['二级分类']" 
+                  class="popup-item"
+                  :class="{ active: selectedMajorL2 === l2 }"
+                  @mouseenter="selectedMajorL2 = l2"
+                >
+                  {{ l2['二级分类'] }} <el-icon><ArrowRight /></el-icon>
+                </div>
+              </div>
+              <div class="popup-column l3" v-if="selectedMajorL2">
+                <div 
+                  v-for="l3 in selectedMajorL2['三级分类']" 
+                  :key="l3" 
+                  class="popup-item"
+                  :class="{ active: searchForm.major_requirement === l3 }"
+                  @click="handleFilterChange('major_requirement', l3); showMajorPopup = false"
+                >
+                  {{ l3 }}
+                </div>
+              </div>
+            </div>
+          </el-popover>
         </div>
       </div>
 
       <div class="filter-row" v-else>
         <span class="filter-label">职位分类</span>
-        <div class="filter-options">
-          <span 
-            class="filter-option" 
-            :class="{ active: !searchForm.job_category }" 
-            @click="handleFilterChange('job_category', '')"
-          >不限</span>
-          <span 
-            v-for="cat in filterOptions.jobCategories" 
-            :key="cat.name"
-            class="filter-option"
-            :class="{ active: searchForm.job_category === cat.name }"
-            @click="handleFilterChange('job_category', cat.name)"
+        <div class="filter-options-container">
+          <div class="filter-options">
+            <span 
+              class="filter-option" 
+              :class="{ active: !searchForm.job_category }" 
+              @click="handleFilterChange('job_category', '')"
+            >不限</span>
+            <span 
+              v-for="cat in filterOptions.jobCategories" 
+              :key="cat"
+              class="filter-option"
+              :class="{ active: searchForm.job_category === cat }"
+              @click="handleFilterChange('job_category', cat)"
+            >
+              {{ cat }}
+            </span>
+             <span 
+              v-if="searchForm.job_category && !filterOptions.jobCategories.includes(searchForm.job_category)"
+              class="filter-option active"
+            >
+              {{ searchForm.job_category }}
+            </span>
+          </div>
+        </div>
+
+        <!-- More Button -->
+        <div class="filter-more-wrapper">
+          <el-popover
+            v-model:visible="showJobPopup"
+            placement="bottom-start"
+            :width="800"
+            trigger="click"
+            popper-class="filter-popup"
           >
-            {{ cat.name }}
-          </span>
+            <template #reference>
+              <span class="filter-more-btn">
+                更多职位 <el-icon><ArrowRight /></el-icon>
+              </span>
+            </template>
+            <div class="popup-content">
+              <div class="popup-column l1">
+                <div 
+                  v-for="l1 in allJobs" 
+                  :key="l1['一级分类']" 
+                  class="popup-item"
+                  :class="{ active: selectedJobL1 === l1 }"
+                  @mouseenter="selectedJobL1 = l1; selectedJobL2 = null"
+                >
+                  {{ l1['一级分类'] }} <el-icon><ArrowRight /></el-icon>
+                </div>
+              </div>
+              <div class="popup-column l2" v-if="selectedJobL1">
+                <div 
+                  v-for="l2 in selectedJobL1['二级分类列表']" 
+                  :key="l2['二级分类']" 
+                  class="popup-item"
+                  :class="{ active: selectedJobL2 === l2 }"
+                  @mouseenter="selectedJobL2 = l2"
+                >
+                  {{ l2['二级分类'] }} <el-icon><ArrowRight /></el-icon>
+                </div>
+              </div>
+              <div class="popup-column l3" v-if="selectedJobL2">
+                <div 
+                  v-for="l3 in selectedJobL2['三级分类']" 
+                  :key="l3" 
+                  class="popup-item"
+                  :class="{ active: searchForm.job_category === l3 }"
+                  @click="handleFilterChange('job_category', l3); showJobPopup = false"
+                >
+                  {{ l3 }}
+                </div>
+              </div>
+            </div>
+          </el-popover>
         </div>
       </div>
 
       <!-- Location Filter -->
       <div class="filter-row">
         <span class="filter-label">工作地点</span>
-        <div class="filter-options">
-          <span 
-            class="filter-option" 
-            :class="{ active: searchForm.location.length === 0 }" 
-            @click="handleFilterChange('location', '')"
-          >全国</span>
-          <span 
-            v-for="city in filterOptions.locations" 
-            :key="city"
-            class="filter-option"
-            :class="{ active: searchForm.location.includes(city) }"
-            @click="handleFilterChange('location', city)"
+        <div class="filter-options-container">
+          <div class="filter-options">
+            <span 
+              class="filter-option" 
+              :class="{ active: searchForm.location.length === 0 }" 
+              @click="handleFilterChange('location', '')"
+            >全国</span>
+            <span 
+              v-for="city in filterOptions.locations" 
+              :key="city"
+              class="filter-option"
+              :class="{ active: searchForm.location.includes(city) }"
+              @click="handleFilterChange('location', city)"
+            >
+              {{ city }}
+            </span>
+          </div>
+        </div>
+
+        <!-- More Button -->
+        <div class="filter-more-wrapper">
+          <el-popover
+            v-model:visible="showLocationPopup"
+            placement="bottom-start"
+            :width="600"
+            trigger="click"
+            popper-class="filter-popup"
           >
-            {{ city }}
-          </span>
+            <template #reference>
+              <span class="filter-more-btn">
+                更多城市 <el-icon><ArrowRight /></el-icon>
+              </span>
+            </template>
+            <div class="popup-content">
+              <div class="popup-column l1">
+                <div 
+                  v-for="l1 in allLocations" 
+                  :key="l1['一级分类']" 
+                  class="popup-item"
+                  :class="{ active: selectedLocationL1 === l1 }"
+                  @mouseenter="selectedLocationL1 = l1"
+                >
+                  {{ l1['一级分类'] }} <el-icon><ArrowRight /></el-icon>
+                </div>
+              </div>
+              <div class="popup-column l2" v-if="selectedLocationL1">
+                <div 
+                  v-for="city in selectedLocationL1['二级分类'].filter(c => !c.startsWith('全'))" 
+                  :key="city" 
+                  class="popup-item"
+                  :class="{ active: searchForm.location.includes(city) }"
+                  @click="handleFilterChange('location', city); showLocationPopup = false"
+                >
+                  {{ city }}
+                </div>
+              </div>
+            </div>
+          </el-popover>
         </div>
       </div>
 
@@ -125,8 +288,11 @@
             placeholder="学历要求" 
             clearable 
             class="filter-select"
-            @change="handleFilterChange"
+            :class="{ 'active-filter': searchForm.degree_requirement }"
+            :teleported="false"
+            @change="(val) => handleFilterChange('degree_requirement', val)"
           >
+            <el-option label="不限" value="" />
             <el-option v-for="item in filterOptions.degrees" :key="item" :label="item" :value="item" />
           </el-select>
 
@@ -135,8 +301,11 @@
             placeholder="经验要求" 
             clearable 
             class="filter-select"
-            @change="handleFilterChange"
+            :class="{ 'active-filter': searchForm.experience_requirement }"
+            :teleported="false"
+            @change="(val) => handleFilterChange('experience_requirement', val)"
           >
+            <el-option label="不限" value="" />
             <el-option v-for="item in filterOptions.experiences" :key="item" :label="item" :value="item" />
           </el-select>
 
@@ -145,8 +314,11 @@
             placeholder="公司行业" 
             clearable 
             class="filter-select"
-            @change="handleFilterChange"
+            :class="{ 'active-filter': searchForm.company__industry }"
+            :teleported="false"
+            @change="(val) => handleFilterChange('company__industry', val)"
           >
+            <el-option label="不限" value="" />
             <el-option v-for="item in filterOptions.industries" :key="item" :label="item" :value="item" />
           </el-select>
 
@@ -155,8 +327,11 @@
             placeholder="公司性质" 
             clearable 
             class="filter-select"
-            @change="handleFilterChange"
+            :class="{ 'active-filter': searchForm.company__nature }"
+            :teleported="false"
+            @change="(val) => handleFilterChange('company__nature', val)"
           >
+            <el-option label="不限" value="" />
             <el-option v-for="item in filterOptions.natures" :key="item" :label="item" :value="item" />
           </el-select>
 
@@ -165,8 +340,11 @@
             placeholder="公司规模" 
             clearable 
             class="filter-select"
-            @change="handleFilterChange"
+            :class="{ 'active-filter': searchForm.company__scale }"
+            :teleported="false"
+            @change="(val) => handleFilterChange('company__scale', val)"
           >
+            <el-option label="不限" value="" />
             <el-option v-for="item in filterOptions.scales" :key="item" :label="item" :value="item" />
           </el-select>
         </div>
@@ -184,23 +362,29 @@
           >
             工作地点: {{ loc }}
           </el-tag>
-          <el-tag v-if="searchForm.job_type" closable @close="handleFilterChange('job_type', '')">
+          <el-tag v-if="searchForm.job_type && searchForm.job_type !== ''" closable @close="handleFilterChange('job_type', '')">
             职位类型: {{ searchForm.job_type }}
           </el-tag>
-          <el-tag v-if="searchForm.degree_requirement" closable @close="handleFilterChange('degree_requirement', '')">
+          <el-tag v-if="searchForm.degree_requirement && searchForm.degree_requirement !== ''" closable @close="handleFilterChange('degree_requirement', '')">
             学历: {{ searchForm.degree_requirement }}
           </el-tag>
-          <el-tag v-if="searchForm.experience_requirement" closable @close="handleFilterChange('experience_requirement', '')">
+          <el-tag v-if="searchForm.experience_requirement && searchForm.experience_requirement !== ''" closable @close="handleFilterChange('experience_requirement', '')">
             经验: {{ searchForm.experience_requirement }}
           </el-tag>
-          <el-tag v-if="searchForm.company__industry" closable @close="handleFilterChange('company__industry', '')">
+          <el-tag v-if="searchForm.company__industry && searchForm.company__industry !== ''" closable @close="handleFilterChange('company__industry', '')">
             行业: {{ searchForm.company__industry }}
           </el-tag>
-          <el-tag v-if="searchForm.company__nature" closable @close="handleFilterChange('company__nature', '')">
+          <el-tag v-if="searchForm.company__nature && searchForm.company__nature !== ''" closable @close="handleFilterChange('company__nature', '')">
             性质: {{ searchForm.company__nature }}
           </el-tag>
-          <el-tag v-if="searchForm.company__scale" closable @close="handleFilterChange('company__scale', '')">
+          <el-tag v-if="searchForm.company__scale && searchForm.company__scale !== ''" closable @close="handleFilterChange('company__scale', '')">
             规模: {{ searchForm.company__scale }}
+          </el-tag>
+          <el-tag v-if="searchForm.major_requirement && searchForm.major_requirement !== ''" closable @close="handleFilterChange('major_requirement', '')">
+            专业: {{ searchForm.major_requirement }}
+          </el-tag>
+          <el-tag v-if="searchForm.job_category && searchForm.job_category !== ''" closable @close="handleFilterChange('job_category', '')">
+            类别: {{ searchForm.job_category }}
           </el-tag>
           <span class="clear-filters-btn" @click="clearFilters">清空筛选</span>
         </div>
@@ -237,7 +421,7 @@
             </div>
             
             <div class="job-footer">
-              <div class="company-info">
+              <div class="company-info" @click.stop="goToCompanyDetail(job.company?.id)">
                 <el-avatar :size="40" :src="job.company?.logo || defaultCompanyLogo" shape="square" class="company-logo" />
                 <div class="company-details">
                   <div class="company-name-row">
@@ -292,6 +476,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
+import majorJson from '@/assets/major.json'
+import jobJson from '@/assets/jobs.json'
+import provinceJson from '@/assets/provinces.json'
+import { ArrowRight, ArrowDown } from '@element-plus/icons-vue'
+
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
@@ -302,26 +491,49 @@ const pageSize = ref(20)
 const defaultCompanyLogo = 'https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png'
 const activeFilterTab = ref('major')
 
-const filterOptions = {
-  locations: ['北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '南京', '西安', '重庆'],
+// Data Processing
+const allMajors = majorJson['专业分类'] || []
+const allJobs = jobJson['职位分类'] || []
+const allLocations = provinceJson['地区分类'] || []
+
+// Flatten locations for easier access
+const flatLocations = []
+allLocations.forEach(p => {
+  if (p['二级分类']) {
+    flatLocations.push(...p['二级分类'].filter(c => !c.startsWith('全')))
+  }
+})
+
+// Top items for display (Hot/Common items)
+const topMajors = ['计算机科学与技术', '软件工程', '会计学', '金融学', '英语', '法学', '临床医学', '土木工程', '机械设计制造及其自动化', '电气工程及其自动化']
+const topJobCategories = ['Java开发', '前端开发', '产品经理', '销售专员', '会计', '人力资源专员', '行政专员', '平面设计', '运营专员']
+const topLocations = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '南京', '西安', '重庆']
+
+// Popup States
+const showMajorPopup = ref(false)
+const showJobPopup = ref(false)
+const showLocationPopup = ref(false)
+
+// Popup Selections
+const selectedMajorL1 = ref(null)
+const selectedMajorL2 = ref(null)
+
+const selectedJobL1 = ref(null)
+const selectedJobL2 = ref(null)
+
+const selectedLocationL1 = ref(null)
+
+const filterOptions = reactive({
+  locations: topLocations,
   jobTypes: ['全职', '实习'],
-  degrees: ['大专', '本科', '硕士', '博士'],
+  degrees: ['初中及以下', '高中', '中专/中技', '大专', '本科', '硕士', '博士', '学历不限'],
   experiences: ['无经验', '1-3年', '3-5年', '5-10年', '10年以上'],
   industries: ['互联网', '金融', '教育', '制造', '医疗', '传媒', '服务业', '运营商/增值服务', '房地产/建筑'],
   natures: ['国企', '民营', '外企', '合资', '事业单位', '股份制企业'],
   scales: ['0-20人', '20-99人', '100-499人', '500-999人', '1000-9999人', '10000人以上'],
-  majorCategories: [
-    { name: '计算机类' }, { name: '机械类' }, { name: '电子信息类' }, 
-    { name: '数学类' }, { name: '物理学类' }, { name: '化学类' },
-    { name: '临床医学类' }, { name: '药学类' }, { name: '工商管理类' }, 
-    { name: '公共管理类' }, { name: '外国语言文学类' }, { name: '艺术学类' }
-  ],
-  jobCategories: [
-    { name: '研发' }, { name: '产品/运营' }, { name: '设计' }, 
-    { name: '金融' }, { name: '教育' }, { name: '制造' }, 
-    { name: '销售' }, { name: '市场' }, { name: '行政' }
-  ]
-}
+  majorCategories: topMajors, // Display specific majors directly
+  jobCategories: topJobCategories // Display specific jobs directly
+})
 
 const searchForm = reactive({
   search: '',
@@ -446,6 +658,12 @@ const viewDetail = (id) => {
   router.push(`/jobs/${id}`)
 }
 
+const goToCompanyDetail = (companyId) => {
+  if (companyId) {
+    router.push(`/company/${companyId}`)
+  }
+}
+
 const applyJob = (id) => {
   // TODO: Implement apply job logic
   console.log('Apply job:', id)
@@ -468,12 +686,73 @@ onMounted(() => {
   if (query.company__industry) searchForm.company__industry = query.company__industry
   if (query.company__nature) searchForm.company__nature = query.company__nature
   if (query.company__scale) searchForm.company__scale = query.company__scale
+
+  if (query.major_requirement) {
+    searchForm.major_requirement = query.major_requirement
+    activeFilterTab.value = 'major'
+  }
+  if (query.job_category) {
+    searchForm.job_category = query.job_category
+    activeFilterTab.value = 'job'
+  }
+  
+  // Handle search query
+  if (query.search) {
+    searchForm.search = query.search
+  }
   
   if (query.page) currentPage.value = parseInt(query.page)
   if (query.page_size) pageSize.value = parseInt(query.page_size)
   
   fetchJobs()
 })
+
+// Watch route changes to update filters or clear them
+watch(
+  () => route.query,
+  (newQuery) => {
+    // If navigating to /jobs without query params (or just page), we might want to clear filters?
+    // User requirement: "When leaving the job search interface, the residual screening of the job search page is cleared."
+    // This implies when *leaving* and coming back? Or when navigating *to* it fresh?
+    // If I click "Software Engineering" on Dashboard -> /jobs?search=Software Engineering.
+    // Filters should be set.
+    // If I then go to Dashboard and come back to /jobs (no query), filters should be empty.
+    
+    // Reset all filters first
+    searchForm.search = ''
+    searchForm.location = []
+    searchForm.job_type = ''
+    searchForm.degree_requirement = ''
+    searchForm.experience_requirement = ''
+    searchForm.company__industry = ''
+    searchForm.company__nature = ''
+    searchForm.company__scale = ''
+    searchForm.major_requirement = ''
+    searchForm.job_category = ''
+
+    // Apply new query params
+    if (newQuery.search) searchForm.search = newQuery.search
+    if (newQuery.location) searchForm.location = newQuery.location.split(',')
+    if (newQuery.job_type) searchForm.job_type = newQuery.job_type
+    if (newQuery.degree_requirement) searchForm.degree_requirement = newQuery.degree_requirement
+    if (newQuery.experience_requirement) searchForm.experience_requirement = newQuery.experience_requirement
+    if (newQuery.company__industry) searchForm.company__industry = newQuery.company__industry
+    if (newQuery.company__nature) searchForm.company__nature = newQuery.company__nature
+    if (newQuery.company__scale) searchForm.company__scale = newQuery.company__scale
+    if (newQuery.major_requirement) {
+      searchForm.major_requirement = newQuery.major_requirement
+      activeFilterTab.value = 'major'
+    }
+    if (newQuery.job_category) {
+      searchForm.job_category = newQuery.job_category
+      activeFilterTab.value = 'job'
+    }
+    
+    currentPage.value = newQuery.page ? parseInt(newQuery.page) : 1
+    
+  fetchJobs()
+  }
+)
 </script>
 
 <style scoped>
@@ -532,15 +811,80 @@ onMounted(() => {
   background-color: #409EFF;
 }
 
-.filter-row {
+.filter-options {
+  flex: 1;
   display: flex;
-  align-items: flex-start;
-  padding: 12px 0;
-  border-bottom: 1px solid #f5f7fa;
+  flex-wrap: wrap;
+  gap: 12px;
+  height: 28px; /* Limit height to one line */
+  overflow: hidden; /* Hide overflow */
+  position: relative;
 }
 
-.filter-row:last-child {
-  border-bottom: none;
+.filter-options.expanded {
+  height: auto;
+  overflow: visible;
+}
+
+/* Make filter-option smaller to fit more */
+.filter-option {
+  padding: 4px 10px;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+/* Position "More" button absolutely to the right if needed, or just let it flow?
+   User said: "fill this line as much as possible, but once it recognizes that it wants to wrap, stop filling"
+   This implies a single line layout with overflow handling or a smart list that cuts off.
+   
+   If we use flex-wrap: wrap and height: 28px + overflow: hidden, items that wrap will be hidden.
+   But the "More" button needs to be visible at the end.
+   
+   A pure CSS way is hard because we don't know which item wraps.
+   
+   However, since we have a fixed list of "top items", maybe we can just render them all and let flex-wrap hide them?
+   But we need the "More" button to be the last visible item.
+   
+   Alternative: Flex with hidden overflow.
+   But user wants "More" button at the end of the line.
+   
+   Let's try this:
+   Use a container with max-height corresponding to one line.
+   Put the "More" button as the last element in DOM.
+   But if previous items fill the line, "More" button might wrap and be hidden.
+   
+   Solution:
+   We can't easily detect wrap in CSS.
+   We can try to just list a reasonable number of items (e.g. top 10) and hope they fit?
+   The current implementation lists topMajors (10 items).
+   Let's ensure the container handles them gracefully.
+   
+   User's request: "fill this line as much as possible... stop filling once it wraps".
+   This sounds like: Show as many as fit, then show "More".
+   
+   Let's use a simpler approach:
+   1. Keep `flex-wrap: wrap` but restrict height to show only one line.
+   2. Position the "More" button absolutely at the right end of the container?
+      No, that might cover items.
+      
+   Actually, the user might just mean: "Don't show a second line of specific options. Just one line. And the 'More' button should be accessible."
+   
+   If I set `height: 30px; overflow: hidden;` on `.filter-options`, and put the "More" button float right?
+   
+   Let's try `flex-wrap: nowrap` with `overflow: hidden`? 
+   No, `flex-wrap: wrap` + fixed height is better to "stop filling".
+   But the "More" button must be visible.
+   
+   Let's try to put the "More" button OUTSIDE the `.filter-options` div, but inside `.filter-row`.
+   So `.filter-row` has: Label | Options (flex 1, hidden overflow) | More Button
+*/
+
+.filter-row {
+  display: flex;
+  align-items: center; /* Align vertically center */
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f7fa;
 }
 
 .filter-label {
@@ -552,11 +896,25 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.filter-options {
+.filter-options-container {
   flex: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  height: 28px; /* Fixed height for single line */
+  margin-right: 10px;
+}
+
+.filter-options {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  /* Negative margin to counteract gap if needed, but let's just rely on container clipping */
+}
+
+.filter-more-wrapper {
+  flex-shrink: 0;
+  margin-left: auto; /* Push to right if container doesn't fill? No, it's a separate flex item in row */
 }
 
 .filter-option {
@@ -800,6 +1158,11 @@ onMounted(() => {
 .company-info {
   display: flex;
   align-items: center;
+  cursor: pointer;
+}
+
+.company-info:hover .company-name {
+  color: #60b3ff;
 }
 
 .company-logo {
@@ -817,6 +1180,13 @@ onMounted(() => {
   margin-bottom: 4px;
   display: flex;
   align-items: center;
+}
+
+.company-name {
+  color: #303133;
+  font-weight: 500;
+  font-size: 14px;
+  transition: color 0.3s;
 }
 
 .company-tags {
@@ -843,5 +1213,111 @@ onMounted(() => {
   margin-top: 30px;
   display: flex;
   justify-content: center;
+}
+
+/* Filter Styles Override */
+:deep(.el-select) {
+  --el-select-border-color-hover: transparent;
+  --el-select-input-focus-border-color: transparent;
+}
+
+:deep(.el-select__wrapper) {
+  background-color: #f2f3f5;
+  border-radius: 20px;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px 12px;
+  min-height: 32px;
+  transition: all 0.3s;
+}
+
+:deep(.el-select__wrapper:hover) {
+  background-color: #e5e6eb;
+}
+
+:deep(.el-select__wrapper.is-focused) {
+  box-shadow: none !important;
+}
+
+/* Active State (Blue) */
+.active-filter :deep(.el-select__wrapper) {
+  background-color: #e6f0ff;
+  color: #409EFF;
+}
+
+.active-filter :deep(.el-select__placeholder) {
+  color: #409EFF;
+  font-weight: bold;
+}
+
+.active-filter :deep(.el-select__caret) {
+  color: #409EFF;
+}
+
+/* Dropdown Animation */
+/* Popup Styles */
+.filter-more-btn {
+  font-size: 14px;
+  color: #606266;
+  cursor: pointer;
+  padding: 4px 12px;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.3s;
+  margin-left: auto;
+  border-radius: 4px;
+}
+
+.filter-more-btn:hover {
+  color: #409EFF;
+  background-color: #ecf5ff;
+}
+
+.filter-more-btn .el-icon {
+  margin-left: 4px;
+}
+
+/* Global popup style (cannot use scoped for popper-class) */
+</style>
+
+<style>
+.filter-popup {
+  padding: 0 !important;
+}
+
+.popup-content {
+  display: flex;
+  height: 300px;
+}
+
+.popup-column {
+  flex: 1;
+  overflow-y: auto;
+  border-right: 1px solid #ebeef5;
+}
+
+.popup-column:last-child {
+  border-right: none;
+}
+
+.popup-item {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #606266;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.popup-item:hover {
+  background-color: #f5f7fa;
+  color: #409EFF;
+}
+
+.popup-item.active {
+  color: #409EFF;
+  font-weight: 500;
+  background-color: #ecf5ff;
 }
 </style>

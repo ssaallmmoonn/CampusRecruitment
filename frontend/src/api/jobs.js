@@ -37,3 +37,11 @@ export function deleteJob(id) {
     method: 'delete'
   })
 }
+
+export function getCompanyJobCategories(companyId) {
+  return request({
+    url: '/jobs/company-categories/',
+    method: 'get',
+    params: { company: companyId }
+  })
+}

@@ -13,11 +13,11 @@
             <el-menu
               :default-active="$route.path"
               mode="horizontal"
-              router
               background-color="#ffffff"
               text-color="#303133"
               active-text-color="#409EFF"
               :ellipsis="false"
+              @select="handleMenuSelect"
             >
               <el-menu-item index="/">首页</el-menu-item>
               
@@ -94,6 +94,7 @@ import { computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
 import { useRouter } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -111,7 +112,30 @@ onMounted(() => {
   }
 })
 
-  const handleCommand = (command) => {
+const handleMenuSelect = (index) => {
+  // Check login for protected routes
+  const protectedRoutes = [
+    '/recommendations', 
+    '/jobs', 
+    '/my-collections', 
+    '/my-applications', 
+    '/resume'
+  ]
+  
+  if (protectedRoutes.includes(index) && !userStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再访问该功能')
+    router.push('/login')
+    return
+  }
+  
+  router.push(index)
+}
+
+const handleNavClick = (path) => {
+  // Deprecated, logic moved to handleMenuSelect
+}
+
+const handleCommand = (command) => {
   if (command === 'logout') {
     userStore.logout()
     router.push('/login')

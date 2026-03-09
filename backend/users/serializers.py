@@ -1,8 +1,24 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Student, Company
 
 User = get_user_model()
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        token['username'] = user.username
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['role'] = self.user.role
+        data['username'] = self.user.username
+        data['id'] = self.user.id
+        return data
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,12 +36,13 @@ class StudentSerializer(serializers.ModelSerializer):
         read_only_fields = ('user',)
 
 class CompanySerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='user.id', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
 
     class Meta:
         model = Company
-        fields = ('user', 'username', 'email', 'company_name', 'credit_code', 'audit_status', 
+        fields = ('id', 'user', 'username', 'email', 'company_name', 'credit_code', 'audit_status', 
                   'contact_person', 'contact_phone', 'description', 'address',
                   'logo', 'industry', 'scale', 'nature')
         read_only_fields = ('user', 'audit_status')

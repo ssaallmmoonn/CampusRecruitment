@@ -42,6 +42,9 @@
           <el-col :span="12">
             <el-form-item label="学历" prop="education">
               <el-select v-model="form.education" placeholder="请选择学历" style="width: 100%">
+                <el-option label="初中及以下" value="初中及以下" />
+                <el-option label="高中" value="高中" />
+                <el-option label="中专/中技" value="中专/中技" />
                 <el-option label="大专" value="大专" />
                 <el-option label="本科" value="本科" />
                 <el-option label="硕士" value="硕士" />

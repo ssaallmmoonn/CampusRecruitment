@@ -9,6 +9,9 @@ from .serializers import JobSerializer, JobCreateSerializer
 from users.models import Company, User
 from users.serializers import CompanySerializer
 import random
+import json
+import os
+from django.conf import settings
 
 class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
     pass
@@ -19,7 +22,7 @@ class JobFilter(django_filters.FilterSet):
     class Meta:
         model = Job
         fields = [
-            'audit_status', 'salary', 'job_type', 
+            'company', 'location', 'audit_status', 'salary', 'job_type', 
             'degree_requirement', 'experience_requirement',
             'company__industry', 'company__nature', 'company__scale',
             'job_category', 'major_requirement'
@@ -85,6 +88,22 @@ class JobViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='company-categories')
+    def company_categories(self, request):
+        company_id = request.query_params.get('company')
+        if not company_id:
+            return Response([])
+        
+        categories = Job.objects.filter(
+            company_id=company_id, 
+            audit_status=1
+        ).values_list('job_category', flat=True).distinct()
+        
+        # Filter out empty strings if any
+        categories = [c for c in categories if c]
+        
+        return Response(categories)
+
 class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [permissions.AllowAny]
 
@@ -133,65 +152,74 @@ class DashboardViewSet(viewsets.ViewSet):
                     scale=data['scale'],
                     nature=data['nature'],
                     audit_status=1,
+                    credit_code=f"91440101{random.randint(10000000, 99999999)}",
                     description=f"{data['name']} is a leading company in {data['industry']} industry."
                 )
 
-    def _generate_mock_jobs(self):
-        mock_jobs = [
-            {'title': '需求分析 (校招, 广州)', 'salary': '9000-13000元', 'company': '广东亿迅-广东亿迅科技有限公司', 'location': '广州', 'type': '全职', 'degree': '本科', 'exp': '无经验', 'industry': '运营商/增值服务', 'scale': '1000-9999人', 'nature': '国企', 'logo': 'https://ui-avatars.com/api/?name=GY&background=0D8ABC&color=fff'},
-            {'title': '商品数据分析员', 'salary': '5000-7000元', 'company': '福建三福服饰有限公司', 'location': '广州', 'type': '全职', 'degree': '学历不限', 'exp': '无经验', 'industry': '玩具/礼品', 'scale': '500-999人', 'nature': '民营', 'logo': 'https://ui-avatars.com/api/?name=SF&background=FF5722&color=fff'},
-            {'title': '数据分析岗', 'salary': '4000-8000元', 'company': '中国大地保险-大地财险广东', 'location': '广州', 'type': '全职', 'degree': '本科', 'exp': '无经验', 'industry': '保险', 'scale': '10000人以上', 'nature': '国企', 'logo': 'https://ui-avatars.com/api/?name=DD&background=4CAF50&color=fff'},
-            {'title': '云售前-广州-26届校招', 'salary': '7000-13000元', 'company': '卓望数码技术 (深圳) 有限公司', 'location': '广州', 'type': '全职', 'degree': '本科', 'exp': '无经验', 'industry': '运营商/增值服务', 'scale': '1000-9999人', 'nature': '外商独资', 'logo': 'https://ui-avatars.com/api/?name=ZW&background=FFC107&color=fff'},
-            {'title': '测试工程师', 'salary': '面议', 'company': '思源电气', 'location': '全国', 'type': '全职', 'degree': '本科', 'exp': '经验不限', 'industry': '电气机械/电力设备', 'scale': '1000-9999人', 'nature': '民营', 'logo': 'https://ui-avatars.com/api/?name=SY&background=3F51B5&color=fff'},
-            {'title': '系统实施 (校招, 广州)', 'salary': '8000-10000元', 'company': '广东亿迅-广东亿迅科技有限公司', 'location': '广州', 'type': '全职', 'degree': '本科', 'exp': '无经验', 'industry': '运营商/增值服务', 'scale': '1000-9999人', 'nature': '国企', 'logo': 'https://ui-avatars.com/api/?name=GY&background=0D8ABC&color=fff'},
-            {'title': '培训生 (设备管理)', 'salary': '面议', 'company': '宝钢股份-上海宝钢国际经济贸易有限公司', 'location': '全国', 'type': '全职', 'degree': '本科', 'exp': '经验不限', 'industry': '钢铁/有色金属冶炼及加工', 'scale': '10000人以上', 'nature': '国企', 'logo': 'https://ui-avatars.com/api/?name=BG&background=607D8B&color=fff'},
-            {'title': 'Java助理工程师', 'salary': '面议', 'company': '深圳麦克韦尔科技有限公司-思摩尔', 'location': '全国', 'type': '实习', 'degree': '学历不限', 'exp': '经验不限', 'industry': '电子/半导体/集成...', 'scale': '10000人以上', 'nature': '股份制企业', 'logo': 'https://ui-avatars.com/api/?name=MK&background=009688&color=fff'},
-            {'title': '运维岗', 'salary': '面议', 'company': '广东水电二局集团有限公司', 'location': '广州', 'type': '全职', 'degree': '本科', 'exp': '经验不限', 'industry': '工程施工', 'scale': '1000-9999人', 'nature': '国企', 'logo': 'https://ui-avatars.com/api/?name=GS&background=8BC34A&color=fff'},
-        ]
+    def _load_json_data(self, filename):
+        path = os.path.join(settings.BASE_DIR, '..', 'frontend', 'src', 'assets', filename)
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
 
-        for i, data in enumerate(mock_jobs):
-            # Check if company exists, if not create it
-            try:
-                company = Company.objects.get(company_name=data['company'])
-            except Company.DoesNotExist:
-                username = f'job_company_mock_{i}'
-                if not User.objects.filter(username=username).exists():
-                    user = User.objects.create_user(username=username, password='password123', role=2)
-                    company = Company.objects.create(
-                        user=user,
-                        company_name=data['company'],
-                        logo=data['logo'],
-                        industry=data['industry'],
-                        scale=data['scale'],
-                        nature=data['nature'],
-                        audit_status=1,
-                        description=f"{data['company']} description."
-                    )
-                else:
-                    # Fallback if user exists but company doesn't (shouldn't happen with our logic but safe to handle)
-                    user = User.objects.get(username=username)
-                    if hasattr(user, 'company_profile'):
-                        company = user.company_profile
-                    else:
-                        company = Company.objects.create(
-                            user=user,
-                            company_name=data['company'],
-                            logo=data['logo'],
-                            audit_status=1
-                        )
+    def _generate_mock_jobs(self):
+        # 1. Ensure companies exist
+        companies = list(Company.objects.filter(audit_status=1))
+        if not companies:
+            self._generate_mock_companies()
+            companies = list(Company.objects.filter(audit_status=1))
+        
+        if not companies:
+            return
+
+        # 2. Load JSON data
+        major_data = self._load_json_data('major.json')
+        majors = []
+        for l1 in major_data.get('专业分类', []):
+            for l2 in l1.get('二级分类列表', []):
+                majors.extend(l2.get('三级分类', []))
+
+        job_data = self._load_json_data('jobs.json')
+        job_cats = []
+        for l1 in job_data.get('职位分类', []):
+            for l2 in l1.get('二级分类列表', []):
+                job_cats.extend(l2.get('三级分类', []))
+
+        province_data = self._load_json_data('provinces.json')
+        locations = []
+        for l1 in province_data.get('地区分类', []):
+            cities = l1.get('二级分类', [])
+            locations.extend([c for c in cities if not c.startswith('全')])
             
-            # Create Job
+        if not majors or not job_cats or not locations:
+             # Fallback if files missing
+             majors = ['计算机科学与技术', '软件工程', '会计学']
+             job_cats = ['Java开发', '产品经理', '销售经理']
+             locations = ['北京', '上海', '广州', '深圳']
+
+        # 3. Generate random jobs
+        prefixes = ['资深', '高级', '初级', '实习', '助理', '']
+        for i in range(20):
+            company = random.choice(companies)
+            cat = random.choice(job_cats)
+            major = random.choice(majors)
+            loc = random.choice(locations)
+            title = f"{random.choice(prefixes)}{cat}"
+
             Job.objects.create(
                 company=company,
-                job_name=data['title'],
-                salary=data['salary'],
-                location=data['location'],
-                job_type=data['type'],
-                degree_requirement=data['degree'],
-                experience_requirement=data['exp'],
-                description=f"Job description for {data['title']}",
-                requirements=f"Requirements for {data['title']}",
+                job_name=title,
+                salary=f"{random.randint(4, 25)}k-{random.randint(26, 60)}k" if random.random() > 0.2 else "面议",
+                location=loc,
+                job_type=random.choice(['全职', '实习']),
+                degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限', '博士', '高中', '中专/中技']),
+                experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限', '5-10年']),
+                description=f"这是一个关于 {cat} 的职位。\n\n岗位职责：\n1. 负责{cat}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
+                requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
                 audit_status=1,
-                job_category=random.choice(['研发', '产品/运营', '设计', '金融', '教育', '制造', '销售', '市场', '行政']),
-                major_requirement=random.choice(['计算机类', '机械类', '电子信息类', '数学类', '物理学类', '化学类', '临床医学类', '药学类', '工商管理类', '公共管理类', '外国语言文学类', '艺术学类'])
+                job_category=cat,
+                major_requirement=major,
+                views_count=random.randint(0, 5000)
             )

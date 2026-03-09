@@ -1,24 +1,39 @@
 <template>
-  <div class="dashboard-container">
-    <!-- Hero Search Section -->
+  <div class="dashboard-page">
+    <!-- Hero Search Section with Background -->
     <div class="hero-section">
-      <div class="search-box">
-        <el-icon class="search-icon"><Search /></el-icon>
-        <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="输入职位关键词搜索" 
-          class="search-input"
-          @keyup.enter="handleSearch"
-        />
-        <el-button type="primary" round class="search-button" @click="handleSearch">
-          搜索
-        </el-button>
+      <div class="hero-bg-decoration left"></div>
+      <div class="hero-bg-decoration right"></div>
+      <div class="container hero-container">
+        <h1 class="hero-title">寻找你的理想职位</h1>
+        <p class="hero-subtitle">海量名企校招，助力职业起航</p>
+        <div class="search-box">
+          <el-icon class="search-icon"><Search /></el-icon>
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="搜索职位、公司、关键词" 
+            class="search-input"
+            @keyup.enter="handleSearch"
+          />
+          <el-button type="primary" round class="search-button" @click="handleSearch">
+            搜索
+          </el-button>
+        </div>
+        <!-- Hot Keywords (Optional, nice to have) -->
+        <div class="hot-tags">
+          <span>热门搜索：</span>
+          <a @click="router.push('/jobs?search=Java')">Java</a>
+          <a @click="router.push('/jobs?search=产品经理')">产品经理</a>
+          <a @click="router.push('/jobs?search=运营')">运营</a>
+          <a @click="router.push('/jobs?search=管培生')">管培生</a>
+        </div>
       </div>
     </div>
 
-    <!-- Main Content Section: Navigation & Carousel -->
-    <div class="main-layout">
+    <div class="container main-content">
+      <!-- Main Content Section: Navigation & Carousel -->
+      <div class="main-layout">
       <!-- Left: Category Navigation -->
       <div class="category-nav" @mouseleave="clearActiveCategory" @mouseenter="cancelClear">
         <div class="nav-tabs">
@@ -36,7 +51,7 @@
           <div 
             v-for="(category, index) in majorCategories" 
             :key="index" 
-            class="nav-item"
+            class="nav-item is-major"
             @mouseenter="activeCategory = index"
           >
             <div class="nav-item-content">
@@ -52,7 +67,7 @@
           <div 
             v-for="(category, index) in jobCategories" 
             :key="index" 
-            class="nav-item"
+            class="nav-item is-job"
             @mouseenter="activeJobCategory = index"
           >
             <div class="nav-item-content">
@@ -99,7 +114,7 @@
 
       <!-- Right: Banner Carousel -->
       <div class="banner-carousel">
-        <el-carousel trigger="click" height="420px">
+        <el-carousel trigger="click" height="440px">
           <el-carousel-item v-for="item in carouselItems" :key="item.id">
             <div class="carousel-item-content" :style="{ backgroundImage: `url(${item.image})` }">
               <div class="carousel-overlay">
@@ -149,11 +164,13 @@
             <span v-for="(tag, index) in job.tags" :key="index" class="job-tag">{{ tag }}</span>
           </div>
           <div class="job-company">
-            <img :src="job.company.logo" :alt="job.company.name" class="company-logo" />
-            <div class="company-info">
-              <div class="company-name" :title="job.company.name">{{ job.company.name }}</div>
-              <div class="company-details" :title="`${job.company.industry} ${job.company.size} ${job.company.type}`">
-                {{ job.company.industry }} {{ job.company.size }} {{ job.company.type }}
+            <div class="company-clickable-area" @click.stop="goToCompanyDetail(job.company.id)">
+              <img :src="job.company.logo" :alt="job.company.name" class="company-logo" />
+              <div class="company-info">
+                <div class="company-name" :title="job.company.name">{{ job.company.name }}</div>
+                <div class="company-details" :title="`${job.company.industry} ${job.company.size} ${job.company.type}`">
+                  {{ job.company.industry }} {{ job.company.size }} {{ job.company.type }}
+                </div>
               </div>
             </div>
             <div class="job-location">{{ job.location }}</div>
@@ -161,19 +178,20 @@
         </div>
       </div>
       <div class="view-more-container">
-        <el-button type="primary" class="view-more-btn" round @click="$router.push('/jobs')">
+        <el-button type="primary" class="view-more-btn" round @click="handleViewMoreJobs">
           查看更多 <el-icon class="el-icon--right"><ArrowRight /></el-icon>
         </el-button>
       </div>
     </div>
-    <!-- Back to Top Button -->
-    <el-backtop :right="40" :bottom="40" :visibility-height="300">
-      <div class="back-to-top-content">
-        <el-icon><ArrowUpBold /></el-icon>
-      </div>
-    </el-backtop>
   </div>
-  
+
+  <!-- Back to Top Button -->
+  <el-backtop :right="40" :bottom="40" :visibility-height="300">
+    <div class="back-to-top-content">
+      <el-icon><ArrowUpBold /></el-icon>
+    </div>
+  </el-backtop>
+</div>
 </template>
 
 <script setup>
@@ -181,6 +199,14 @@ import { ref, onMounted } from 'vue'
 import { useUserStore } from '../../stores/user'
 import { useRouter } from 'vue-router'
 import request from '../../utils/request'
+import { ElMessage } from 'element-plus'
+import { 
+  Search, ArrowRight, ArrowUpBold, PriceTag, Suitcase,
+  Monitor, DataLine, FirstAidKit, Apple, Management, Notebook, ScaleToOriginal,
+  Money, Connection, Tools, Brush, Headset, Trophy
+} from '@element-plus/icons-vue'
+import majorJson from '@/assets/major.json'
+import jobJson from '@/assets/jobs.json'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -189,121 +215,57 @@ const activeTab = ref('major')
 const activeCategory = ref(null)
 const activeJobCategory = ref(null)
 
-const majorCategories = [
-  { 
-    name: '工学', 
-    icon: 'Monitor',
-    children: [
-      { name: '计算机类', items: ['计算机科学与技术', '软件工程', '网络工程', '信息安全', '物联网工程'] },
-      { name: '机械类', items: ['机械工程', '机械设计制造及其自动化', '车辆工程', '测控技术与仪器'] },
-      { name: '电子信息类', items: ['电子信息工程', '电子科学与技术', '通信工程', '微电子科学与工程'] }
-    ]
-  },
-  { 
-    name: '理学', 
-    icon: 'Cpu',
-    children: [
-      { name: '数学类', items: ['数学与应用数学', '信息与计算科学', '统计学'] },
-      { name: '物理学类', items: ['物理学', '应用物理学', '核物理'] },
-      { name: '化学类', items: ['化学', '应用化学', '化学生物学'] }
-    ]
-  },
-  { 
-    name: '医学', 
-    icon: 'FirstAidKit',
-    children: [
-      { name: '临床医学类', items: ['临床医学', '麻醉学', '医学影像学'] },
-      { name: '药学类', items: ['药学', '药物制剂', '临床药学'] },
-      { name: '护理学类', items: ['护理学', '助产学'] }
-    ]
-  },
-  { 
-    name: '农学', 
-    icon: 'Apple',
-    children: [
-      { name: '植物生产类', items: ['农学', '园艺', '植物保护'] },
-      { name: '动物生产类', items: ['动物科学', '蚕学', '蜂学'] }
-    ]
-  },
-  { 
-    name: '管理学', 
-    icon: 'Management',
-    children: [
-      { name: '工商管理类', items: ['工商管理', '市场营销', '会计学', '财务管理', '人力资源管理'] },
-      { name: '公共管理类', items: ['公共事业管理', '行政管理', '劳动与社会保障'] }
-    ]
-  },
-  { 
-    name: '文学', 
-    icon: 'Notebook',
-    children: [
-      { name: '中国语言文学类', items: ['汉语言文学', '汉语言', '汉语国际教育'] },
-      { name: '外国语言文学类', items: ['英语', '俄语', '德语', '法语', '日语'] },
-      { name: '新闻传播学类', items: ['新闻学', '广播电视学', '广告学', '传播学'] }
-    ]
-  },
-  { 
-    name: '法学', 
-    icon: 'ScaleToOriginal',
-    children: [
-      { name: '法学类', items: ['法学', '知识产权', '监狱学'] },
-      { name: '政治学类', items: ['政治学与行政学', '国际政治', '外交学'] },
-      { name: '社会学类', items: ['社会学', '社会工作', '人类学'] }
-    ]
-  },
-  { 
-    name: '艺术学', 
-    icon: 'Brush',
-    children: [
-      { name: '美术学类', items: ['美术学', '绘画', '雕塑', '摄影'] },
-      { name: '设计学类', items: ['艺术设计学', '视觉传达设计', '环境设计', '产品设计'] },
-      { name: '音乐与舞蹈学类', items: ['音乐表演', '音乐学', '舞蹈表演'] }
-    ]
-  },
-]
+const majorIcons = {
+  '工学': 'Monitor',
+  '理学': 'DataLine',
+  '医学': 'FirstAidKit',
+  '农学': 'Apple',
+  '管理学': 'Management',
+  '文学': 'Notebook',
+  '法学': 'ScaleToOriginal'
+}
 
-const jobCategories = [
-  { 
-    name: '互联网', 
-    icon: 'Connection',
-    children: [
-      { name: '研发', items: ['Java开发', 'C++开发', '前端开发', '移动端开发', '测试工程师'] },
-      { name: '产品/运营', items: ['产品经理', '用户运营', '内容运营', '新媒体运营'] },
-      { name: '设计', items: ['UI设计师', '交互设计师', '视觉设计师'] }
-    ]
-  },
-  { 
-    name: '金融', 
-    icon: 'Money',
-    children: [
-      { name: '银行', items: ['柜员', '客户经理', '风险控制', '信贷审批'] },
-      { name: '证券/基金', items: ['投资顾问', '行业研究员', '交易员'] },
-      { name: '保险', items: ['保险精算师', '核保理赔', '保险代理人'] }
-    ]
-  },
-  { 
-    name: '教育', 
-    icon: 'School',
-    children: [
-      { name: '教师', items: ['幼教', '小学教师', '初高中教师', '大学教师'] },
-      { name: '培训', items: ['培训讲师', '课程顾问', '教务管理'] },
-      { name: '行政', items: ['行政专员', '辅导员', '图书管理员'] }
-    ]
-  },
-  { 
-    name: '制造', 
-    icon: 'Van',
-    children: [
-      { name: '机械', items: ['机械工程师', '模具设计', '机电工程师'] },
-      { name: '电子/半导体', items: ['电子工程师', 'IC设计', '嵌入式开发'] },
-      { name: '汽车', items: ['车辆工程', '汽车设计', '汽车维修'] }
-    ]
-  },
-]
+const jobIcons = {
+  '销售/商务拓展': 'Money',
+  '人事/行政/财务/法务': 'Suitcase',
+  '互联网/通信及硬件': 'Connection',
+  '运维/测试': 'Tools',
+  '视觉/交互/设计': 'Brush',
+  '运营/客服': 'Headset',
+  '产品/项目/高级管理': 'Trophy'
+}
+
+const transformMajors = (data) => {
+  if (!data || !data['专业分类']) return []
+  return data['专业分类'].map(cat => ({
+    name: cat['一级分类'],
+    icon: majorIcons[cat['一级分类']] || 'Monitor',
+    children: cat['二级分类列表'].map(sub => ({
+      name: sub['二级分类'],
+      items: sub['三级分类']
+    }))
+  }))
+}
+
+const transformJobs = (data) => {
+  if (!data || !data['职位分类']) return []
+  return data['职位分类'].map(cat => ({
+    name: cat['一级分类'],
+    icon: jobIcons[cat['一级分类']] || 'Suitcase',
+    children: cat['二级分类列表'].map(sub => ({
+      name: sub['二级分类'],
+      items: sub['三级分类']
+    }))
+  }))
+}
+
+const majorCategories = transformMajors(majorJson)
+const jobCategories = transformJobs(jobJson)
 
 const getSubCategoryPreview = (category) => {
   if (!category.children || category.children.length === 0) return ''
   // Return the first group name or a few items joined
+  // Modified to show sub-category names (二级分类) instead of items, as items are too deep
   return category.children.map(c => c.name).slice(0, 2).join('/')
 }
 
@@ -353,6 +315,7 @@ const fetchSelectedJobs = async () => {
       salary: item.salary,
       tags: [item.job_type, item.degree_requirement, item.experience_requirement],
       company: {
+        id: item.company.id,
         name: item.company.company_name,
         logo: item.company.logo,
         industry: item.company.industry,
@@ -377,6 +340,41 @@ const handleSearch = () => {
   }
 }
 
+const handleViewMoreJobs = () => {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再访问该功能')
+    router.push('/login')
+    return
+  }
+  router.push('/jobs')
+}
+
+const handleCategoryClick = (category, type) => {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再访问该功能')
+    router.push('/login')
+    return
+  }
+  
+  // Construct query based on type
+  const query = {}
+  if (type === 'major') {
+    // Pass as major_requirement filter instead of search
+    query.major_requirement = category
+  } else if (type === 'job') {
+    // Pass as job_category filter instead of search
+    query.job_category = category
+  }
+  
+  router.push({ path: '/jobs', query })
+}
+
+const goToCompanyDetail = (companyId) => {
+  if (companyId) {
+    router.push(`/company/${companyId}`)
+  }
+}
+
 let clearTimer = null
 
 const clearActiveCategory = () => {
@@ -397,17 +395,68 @@ const cancelClear = () => {
 </script>
 
 <style scoped>
-.dashboard-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+.dashboard-page {
+  min-height: 100%;
 }
 
 .hero-section {
-  margin-bottom: 30px;
+  position: relative;
+  background: linear-gradient(135deg, #f6f8fd 0%, #f0f4ff 100%);
+  padding: 80px 0 60px;
+  text-align: center;
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+
+.hero-bg-decoration {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+}
+
+.hero-bg-decoration.left {
+  top: -50px;
+  left: -50px;
+  width: 300px;
+  height: 300px;
+  background: rgba(64, 158, 255, 0.1);
+}
+
+.hero-bg-decoration.right {
+  bottom: -50px;
+  right: -50px;
+  width: 400px;
+  height: 400px;
+  background: rgba(103, 194, 58, 0.05);
+}
+
+.hero-container {
+  position: relative;
+  z-index: 1;
   display: flex;
-  justify-content: center;
-  padding: 20px 0 30px 0;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: #303133;
+  margin: 0 0 10px;
+  letter-spacing: 1px;
+}
+
+.hero-subtitle {
+  font-size: 16px;
+  color: #606266;
+  margin: 0 0 30px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 .search-box {
@@ -418,18 +467,19 @@ const cancelClear = () => {
   border-radius: 50px;
   padding: 8px 8px 8px 24px;
   width: 100%;
-  max-width: 800px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s;
+  max-width: 720px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .search-box:hover, .search-box:focus-within {
-  border-color: #0056b3;
-  box-shadow: 0 4px 12px rgba(0, 86, 179, 0.15);
+  border-color: #409EFF;
+  box-shadow: 0 12px 32px rgba(64, 158, 255, 0.12);
+  transform: translateY(-2px);
 }
 
 .search-icon {
-  font-size: 24px;
+  font-size: 20px;
   color: #909399;
   margin-right: 12px;
 }
@@ -438,7 +488,7 @@ const cancelClear = () => {
   flex: 1;
   border: none;
   outline: none;
-  font-size: 18px;
+  font-size: 16px;
   color: #303133;
   background: transparent;
   line-height: 1.5;
@@ -449,25 +499,51 @@ const cancelClear = () => {
 }
 
 .search-button {
-  padding: 12px 32px;
-  font-size: 18px;
+  padding: 12px 36px;
+  font-size: 16px;
   border-radius: 24px;
-  background-color: #0056b3;
-  border-color: #0056b3;
+  background: linear-gradient(90deg, #409EFF 0%, #3a8ee6 100%);
+  border: none;
   font-weight: 500;
   letter-spacing: 1px;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  transition: all 0.3s;
 }
 
 .search-button:hover {
-  background-color: #004494;
-  border-color: #004494;
+  background: linear-gradient(90deg, #66b1ff 0%, #409EFF 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+}
+
+.hot-tags {
+  margin-top: 16px;
+  font-size: 13px;
+  color: #909399;
+}
+
+.hot-tags a {
+  margin: 0 8px;
+  color: #606266;
+  cursor: pointer;
+  transition: color 0.3s;
+  text-decoration: none;
+}
+
+.hot-tags a:hover {
+  color: #409EFF;
+  text-decoration: underline;
+}
+
+.main-content {
+  padding-bottom: 60px;
 }
 
 .main-layout {
   display: flex;
-  gap: 20px;
-  margin-bottom: 40px;
-  height: 420px;
+  gap: 24px;
+  margin-bottom: 50px;
+  height: 440px;
 }
 
 .category-nav {
@@ -502,7 +578,7 @@ const cancelClear = () => {
 .nav-tabs span {
   flex: 1;
   text-align: center;
-  padding: 15px 0;
+  padding: 8px 0;
   cursor: pointer;
   font-size: 15px;
   color: #606266;
@@ -532,6 +608,12 @@ const cancelClear = () => {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.nav-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .nav-footer {
@@ -579,20 +661,41 @@ const cancelClear = () => {
 }
 
 .category-name {
-  font-size: 15px;
+  font-size: 16px;
   color: #303133;
   font-weight: 500;
-  margin-right: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-item.is-major .category-name {
+  width: 80px; /* Fixed width for major names to align sub-categories */
+  margin-right: 0;
+}
+
+.nav-item.is-job .category-name {
+  width: auto;
+  margin-right: 10px;
+}
+
+.nav-item.is-job .sub-category {
+  text-align: right;
 }
 
 .sub-category {
-  font-size: 13px;
+  font-size: 12px;
   color: #909399;
-  margin-right: 10px;
-  max-width: 100px;
+  margin-right: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  text-align: left; /* Align left for major */
+  min-width: 0;
+}
+
+.nav-item.is-job .sub-category {
+  text-align: right; /* Align right for job to keep previous style */
 }
 
 .arrow-icon {
@@ -605,8 +708,8 @@ const cancelClear = () => {
   position: absolute;
   left: 300px; /* 280px width + 20px gap */
   top: 0;
-  width: 800px; /* Match carousel width */
-  height: 375px;
+  width: 850px; /* Match carousel width */
+  height: 390px;
   background-color: #fff;
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
   z-index: 100;
@@ -878,6 +981,19 @@ const cancelClear = () => {
   padding-top: 16px;
   border-top: 1px solid #f0f2f5;
   margin-top: auto;
+}
+
+.company-clickable-area {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.company-clickable-area:hover .company-name {
+  color: #60b3ff;
 }
 
 .company-logo {

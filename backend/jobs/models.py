@@ -9,6 +9,17 @@ class Job(models.Model):
         (3, '下架'),
     )
 
+    DEGREE_CHOICES = (
+        ('初中及以下', '初中及以下'),
+        ('高中', '高中'),
+        ('中专/中技', '中专/中技'),
+        ('大专', '大专'),
+        ('本科', '本科'),
+        ('硕士', '硕士'),
+        ('博士', '博士'),
+        ('学历不限', '学历不限'),
+    )
+
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='jobs', verbose_name='发布企业')
     job_name = models.CharField(max_length=50, verbose_name='职位名称')
     salary = models.CharField(max_length=20, verbose_name='薪资')
@@ -24,7 +35,7 @@ class Job(models.Model):
 
     # New fields for UI
     job_type = models.CharField(max_length=20, default='全职', verbose_name='工作性质')  # 全职/实习
-    degree_requirement = models.CharField(max_length=20, default='本科', verbose_name='学历要求')  # 本科/大专/不限
+    degree_requirement = models.CharField(max_length=20, choices=DEGREE_CHOICES, default='本科', verbose_name='学历要求')
     experience_requirement = models.CharField(max_length=20, default='不限', verbose_name='经验要求')  # 无经验/1-3年/不限
     
     # New fields for Filter

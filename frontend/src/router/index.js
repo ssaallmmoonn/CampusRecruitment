@@ -23,6 +23,11 @@ const routes = [
                 component: () => import('../views/student/JobDetail.vue')
             },
             {
+                path: 'company/:id',
+                name: 'CompanyDetail',
+                component: () => import('../views/student/CompanyDetail.vue')
+            },
+            {
                 path: 'my-applications',
                 name: 'MyApplications',
                 component: () => import('../views/student/MyApplications.vue')
