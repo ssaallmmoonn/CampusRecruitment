@@ -5,7 +5,7 @@
       <div class="search-box">
         <el-icon class="search-icon"><Search /></el-icon>
         <input 
-          v-model="searchForm.search" 
+          v-model="searchInput" 
           type="text" 
           placeholder="输入职位关键词搜索" 
           class="search-input"
@@ -354,6 +354,9 @@
       <div class="selected-conditions" v-if="hasActiveFilters">
         <span class="filter-label">已选条件</span>
         <div class="selected-tags">
+          <el-tag v-if="searchForm.search" closable @close="handleFilterChange('search', '')">
+            关键词: {{ searchForm.search }}
+          </el-tag>
           <el-tag 
             v-for="loc in searchForm.location" 
             :key="loc"
@@ -392,9 +395,15 @@
     </div>
 
     <div class="job-list" v-loading="loading">
-      <el-empty v-if="!loading && jobs.length === 0" description="暂无职位" />
+      <div v-if="!loading && jobs.length === 0" class="no-results-box">
+        <el-empty description=" " :image-size="200">
+           <template #description>
+             <p class="no-results-text">没有符合条件的职位，请修改筛选条件后再试</p>
+           </template>
+        </el-empty>
+      </div>
       
-      <el-row :gutter="20">
+      <el-row :gutter="20" v-else>
         <el-col :span="24" v-for="job in jobs" :key="job.id" class="job-item-col">
           <el-card shadow="hover" class="job-card">
             <div class="job-content" @click="viewDetail(job.id)">
@@ -535,6 +544,7 @@ const filterOptions = reactive({
   jobCategories: topJobCategories // Display specific jobs directly
 })
 
+const searchInput = ref('')
 const searchForm = reactive({
   search: '',
   location: [],
@@ -549,7 +559,8 @@ const searchForm = reactive({
 })
 
 const hasActiveFilters = computed(() => {
-  return searchForm.location.length > 0 || 
+  return searchForm.search ||
+         searchForm.location.length > 0 || 
          searchForm.job_type || 
          searchForm.degree_requirement || 
          searchForm.experience_requirement || 
@@ -577,6 +588,11 @@ const handleFilterChange = (key, value) => {
         searchForm.location.splice(index, 1)
       }
     }
+  } else if (key === 'search') {
+    searchForm.search = value
+    if (value === '') {
+      searchInput.value = ''
+    }
   } else if (typeof key === 'string') {
     searchForm[key] = value
 
@@ -601,6 +617,8 @@ const handleFilterChange = (key, value) => {
 }
 
 const clearFilters = () => {
+  searchForm.search = ''
+  searchInput.value = ''
   searchForm.location = []
   searchForm.job_type = ''
   searchForm.degree_requirement = ''
@@ -610,7 +628,8 @@ const clearFilters = () => {
   searchForm.company__scale = ''
   searchForm.major = ''
   searchForm.job_category = ''
-  handleSearch()
+  currentPage.value = 1
+  fetchJobs()
 }
 
 const fetchJobs = async () => {
@@ -660,6 +679,11 @@ const fetchJobs = async () => {
 }
 
 const handleSearch = () => {
+  if (!searchInput.value || !searchInput.value.trim()) {
+    ElMessage.warning('请输入搜索内容')
+    return
+  }
+  searchForm.search = searchInput.value
   currentPage.value = 1
   fetchJobs()
 }
@@ -697,58 +721,15 @@ const formatDate = (dateStr) => {
 }
 
 onMounted(() => {
-  const query = route.query
-  if (query.search) searchForm.search = query.search
-  if (query.location) searchForm.location = query.location.split(',')
-  if (query.job_type) searchForm.job_type = query.job_type
-  if (query.degree_requirement) searchForm.degree_requirement = query.degree_requirement
-  if (query.experience_requirement) searchForm.experience_requirement = query.experience_requirement
-  if (query.company__industry) searchForm.company__industry = query.company__industry
-  if (query.company__nature) searchForm.company__nature = query.company__nature
-  if (query.company__scale) searchForm.company__scale = query.company__scale
-
-  if (query.major) {
-    searchForm.major = query.major
-    activeFilterTab.value = 'major'
-  }
-  if (query.job_category) {
-    searchForm.job_category = query.job_category
-    activeFilterTab.value = 'job'
-  }
-  
-  // Handle search query
-  // Reset all filters first for every onMounted to ensure clean state if navigating from other pages
-  // But wait, if I reload page, query params are there, so it's fine.
-  // If I navigate from Dashboard with query, it's fine.
-  // If I navigate from "Search" box in Dashboard, it has query.
-  // If I click "Job Board" in nav, it has NO query.
-  // So if NO query params are present, we should clear everything?
-  // The current code initializes searchForm with empty values.
-  // Then it overwrites them IF query params exist.
-  // So if query params are empty, searchForm stays empty.
-  // This already meets the requirement: "when navigating to other pages and back... if filter has conditions... clear them"
-  // Wait, if I go to Detail page and come back?
-  // If I use router.push('/jobs'), query is empty -> filters cleared.
-  // If I use "Back" button, browser restores state? Vue Router might keep component alive?
-  // If component is not kept alive, onMounted runs again.
-  // If I navigate to /company/1 and then click "Jobs" in menu -> /jobs (no query) -> filters cleared.
-  // If I navigate to /company/1 and click "Back" -> /jobs?major=... -> filters restored (correct).
-  
-  // Requirement: "When job search page has selected conditions, jumping to OTHER pages, clear these conditions. Re-entering job search page... filter is empty."
-  // This implies we should NOT persist state in store or keep-alive.
-  // Since we are using local reactive `searchForm` and `onMounted` parses `route.query`, 
-  // If we navigate to another page (e.g. Home) and then click "Job Search" menu (which links to /jobs), 
-  // `route.query` will be empty, so `searchForm` will be empty.
-  // So this is ALREADY the default behavior.
-  
-  // However, `watch` handles route updates.
-  // Let's ensure `onMounted` logic is robust.
-  
-  // Check if we need to explicitly clear if query is empty?
-  // Yes, if `searchForm` has default values (it doesn't, all empty strings/arrays).
-  
   const queryParams = route.query
-  if (queryParams.search) searchForm.search = queryParams.search
+  
+  // Reset all filters first to ensure clean state
+  // But since searchForm is reactive and initialized empty, we just overwrite if present
+  
+  // NOTE: We do NOT restore searchForm.search from queryParams.search to satisfy 
+  // "clear text in search box on refresh" requirement.
+  // The searchInput is also initialized to empty string.
+  
   if (queryParams.location) searchForm.location = queryParams.location.split(',')
   if (queryParams.job_type) searchForm.job_type = queryParams.job_type
   if (queryParams.degree_requirement) searchForm.degree_requirement = queryParams.degree_requirement
@@ -756,10 +737,6 @@ onMounted(() => {
   if (queryParams.company__industry) searchForm.company__industry = queryParams.company__industry
   if (queryParams.company__nature) searchForm.company__nature = queryParams.company__nature
   if (queryParams.company__scale) searchForm.company__scale = queryParams.company__scale
-  
-  // Fix: Only set major/job_category if present. 
-  // If not present, activeFilterTab defaults to 'major' (line 492).
-  // Is this desired? Yes.
   
   if (queryParams.major) {
     searchForm.major = queryParams.major
@@ -809,6 +786,7 @@ watch(
     // Reset all filters first - CRITICAL for "Clear conditions when re-entering"
     // If newQuery is empty (e.g. clicking "Job Board" link), this clears everything.
     searchForm.search = ''
+    searchInput.value = ''
     searchForm.location = []
     searchForm.job_type = ''
     searchForm.degree_requirement = ''
@@ -825,7 +803,10 @@ watch(
     // Let's keep current tab unless query specifies otherwise.
 
     // Apply new query params
-    if (newQuery.search) searchForm.search = newQuery.search
+    if (newQuery.search) {
+       searchForm.search = newQuery.search
+       searchInput.value = newQuery.search
+    }
     if (newQuery.location) searchForm.location = newQuery.location.split(',')
     if (newQuery.job_type) searchForm.job_type = newQuery.job_type
     if (newQuery.degree_requirement) searchForm.degree_requirement = newQuery.degree_requirement
@@ -1428,5 +1409,18 @@ watch(
   color: #409EFF;
   font-weight: 500;
   background-color: #ecf5ff;
+}
+
+.no-results-box {
+  padding: 40px 0;
+  background: white;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.no-results-text {
+  font-size: 16px;
+  color: #606266;
+  margin-top: 10px;
 }
 </style>

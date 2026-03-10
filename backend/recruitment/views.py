@@ -31,6 +31,26 @@ class ResumeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Resume.objects.filter(student=self.request.user.student_profile)
 
+
+
+
+    def create(self, request, *args, **kwargs):
+        # Check if already applied
+        job_id = request.data.get('job')
+        if job_id:
+             try:
+                 student = request.user.student_profile
+                 if JobApplication.objects.filter(student=student, job_id=job_id).exists():
+                     return Response(
+                         {'detail': '您已经投递过该职位，请勿重复投递'}, 
+                         status=status.HTTP_400_BAD_REQUEST
+                     )
+             except Exception:
+                 # In case user has no student profile or other error
+                 pass
+        
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         serializer.save(student=self.request.user.student_profile)
 
@@ -74,6 +94,21 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         job.deliveries_count += 1
         job.save(update_fields=['deliveries_count'])
 
+    @action(detail=False, methods=['get'])
+    def check_status(self, request):
+        """
+        Check if a job is applied.
+        """
+        job_id = request.query_params.get('job_id')
+        if not job_id:
+            return Response({'error': 'job_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        student = request.user.student_profile
+        application = JobApplication.objects.filter(student=student, job_id=job_id).first()
+        
+        if application:
+            return Response({'applied': True, 'application_id': application.id})
+        return Response({'applied': False})
     @action(detail=True, methods=['post'], permission_classes=[IsCompany])
     def update_status(self, request, pk=None):
         """

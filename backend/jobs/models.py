@@ -42,6 +42,7 @@ class Job(models.Model):
     job_category = models.CharField(max_length=50, blank=True, verbose_name='职位分类') # e.g. 'Java开发'
     major = models.CharField(max_length=50, blank=True, verbose_name='专业分类') # e.g. '软件工程'
     major_requirement = models.CharField(max_length=50, blank=True, verbose_name='专业要求') # Legacy, or text description
+    search_keywords = models.JSONField(default=list, blank=True, verbose_name='搜索关键词')
 
     def __str__(self):
         return self.job_name

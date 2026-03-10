@@ -84,9 +84,10 @@
       </div>
     </div>
     </el-container>
-  </div>
 
-  
+    <!-- Back to Top Button -->
+    <el-backtop :right="40" :bottom="40" />
+  </div>
 </template>
 
 <script setup>

@@ -25,7 +25,14 @@
               <span class="tag-item">{{ job.job_type }}</span>
             </div>
             <div class="job-actions-top">
-               <el-button type="primary" size="large" class="apply-btn" @click="openApplyDialog">立即投递</el-button>
+               <el-button 
+                 :type="isApplied ? 'info' : 'primary'" 
+                 size="large" 
+                 class="apply-btn" 
+                 @click="handleApplyClick"
+               >
+                 {{ isApplied ? '已投递' : '立即投递' }}
+               </el-button>
                <div class="action-icons">
                  <div class="action-item" @click="handleCollect">
                    <el-icon :class="{ collected: isCollected }"><component :is="isCollected ? 'StarFilled' : 'Star'" /></el-icon>
@@ -190,8 +197,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getJobDetail } from '@/api/jobs'
-import { applyJob, getResumes, recordBehavior, toggleCollect, checkCollectStatus } from '@/api/recruitment'
-import { ElMessage } from 'element-plus'
+import { applyJob, getResumes, recordBehavior, toggleCollect, checkCollectStatus, checkApplicationStatus, cancelApplication } from '@/api/recruitment'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { ArrowLeft, Star, StarFilled, Bell, Plus } from '@element-plus/icons-vue'
 
@@ -201,6 +208,8 @@ const userStore = useUserStore()
 const loading = ref(false)
 const job = ref(null)
 const isCollected = ref(false)
+const isApplied = ref(false)
+const applicationId = ref(null)
 const defaultCompanyLogo = 'https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png'
 
 // Application related
@@ -226,6 +235,13 @@ const fetchJobDetail = async () => {
       // Check collection status
       const res = await checkCollectStatus({ job_id: id })
       isCollected.value = res.collected
+
+      // Check application status
+      const appRes = await checkApplicationStatus(id)
+      isApplied.value = appRes.applied
+      if (appRes.applied) {
+        applicationId.value = appRes.application_id
+      }
     }
   } catch (error) {
     console.error('Failed to fetch job detail:', error)
@@ -235,12 +251,41 @@ const fetchJobDetail = async () => {
   }
 }
 
-const openApplyDialog = async () => {
+const handleApplyClick = async () => {
     if (!userStore.isLoggedIn) {
         ElMessage.warning('请先登录后再投递')
         router.push('/login')
         return
     }
+
+    if (isApplied.value) {
+      try {
+        await ElMessageBox.confirm(
+          '确定要取消该职位的投递吗？',
+          '提示',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+          }
+        )
+        
+        await cancelApplication(applicationId.value)
+        ElMessage.success('已取消投递')
+        isApplied.value = false
+        applicationId.value = null
+      } catch (error) {
+        if (error !== 'cancel') {
+           console.error('Cancel application failed:', error)
+           ElMessage.error('取消投递失败')
+        }
+      }
+    } else {
+       openApplyDialog()
+    }
+}
+
+const openApplyDialog = async () => {
     applyDialogVisible.value = true
     try {
         const res = await getResumes()
@@ -258,6 +303,13 @@ const handleApply = async () => {
       })
       ElMessage.success('简历投递成功！')
       applyDialogVisible.value = false
+      
+      // Update status
+      isApplied.value = true
+      const appRes = await checkApplicationStatus(job.value.id)
+      if (appRes.applied) {
+          applicationId.value = appRes.application_id
+      }
   } catch (error) {
       // Error handled in interceptor
   }

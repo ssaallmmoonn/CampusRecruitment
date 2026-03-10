@@ -47,6 +47,21 @@ export function getApplications() {
   })
 }
 
+export function cancelApplication(id) {
+  return request({
+    url: `/recruitment/applications/${id}/`,
+    method: 'delete'
+  })
+}
+
+export function checkApplicationStatus(jobId) {
+  return request({
+    url: '/recruitment/applications/check_status/',
+    method: 'get',
+    params: { job_id: jobId }
+  })
+}
+
 // Behaviors
 export function recordBehavior(data) {
   return request({

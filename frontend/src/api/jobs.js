@@ -45,3 +45,15 @@ export function getCompanyJobCategories(companyId) {
     params: { company: companyId }
   })
 }
+
+export function getCompanyLocations(companyId, jobCategory) {
+  const params = { company: companyId }
+  if (jobCategory) {
+    params.job_category = jobCategory
+  }
+  return request({
+    url: '/jobs/company-locations/',
+    method: 'get',
+    params
+  })
+}

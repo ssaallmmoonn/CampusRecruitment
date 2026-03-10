@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from django.db.models import Q
@@ -42,6 +43,11 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
         return obj.company.user == request.user
 
+class JobPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
@@ -49,8 +55,9 @@ class JobViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly] 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = JobFilter
-    search_fields = ['job_name', 'description', 'requirements', 'company__company_name']
+    search_fields = ['job_name', 'description', 'requirements', 'company__company_name', 'search_keywords']
     ordering_fields = ['create_time', 'views_count']
+    pagination_class = JobPagination
 
     def get_permissions(self):
         """
@@ -116,6 +123,28 @@ class JobViewSet(viewsets.ModelViewSet):
         categories = [c for c in categories if c]
         
         return Response(categories)
+
+    @action(detail=False, methods=['get'], url_path='company-locations')
+    def company_locations(self, request):
+        company_id = request.query_params.get('company')
+        job_category = request.query_params.get('job_category')
+        if not company_id:
+            return Response([])
+        
+        queryset = Job.objects.filter(
+            company_id=company_id, 
+            audit_status=1
+        )
+
+        if job_category:
+            queryset = queryset.filter(job_category=job_category)
+            
+        locations = queryset.values_list('location', flat=True).distinct()
+        
+        # Filter out empty strings if any
+        locations = [l for l in locations if l]
+        
+        return Response(locations)
 
 class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [permissions.AllowAny]

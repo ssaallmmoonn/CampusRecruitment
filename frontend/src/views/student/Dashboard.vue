@@ -12,7 +12,7 @@
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="搜索职位、公司、关键词" 
+            placeholder="搜索职位、专业、关键词" 
             class="search-input"
             @keyup.enter="handleSearch"
           />
