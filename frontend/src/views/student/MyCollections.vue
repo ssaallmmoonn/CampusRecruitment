@@ -70,6 +70,8 @@
             >
                 <el-option label="投递时间 (新到旧)" value="-deliveries" />
                 <el-option label="投递时间 (旧到新)" value="deliveries" />
+                <el-option label="收藏时间 (新到旧)" value="-create_time" />
+                <el-option label="收藏时间 (旧到新)" value="create_time" />
                 <el-option label="薪资 (高到低)" value="-salary" />
                 <el-option label="薪资 (低到高)" value="salary" />
             </el-select>

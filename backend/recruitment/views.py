@@ -243,6 +243,12 @@ class BehaviorViewSet(viewsets.ModelViewSet):
                   # 3. Sort: applied jobs (by time DESC)
                   queryset = queryset.order_by('-app_time')
 
+             elif ordering == 'create_time': # 收藏时间 (Old -> New)
+                 queryset = queryset.order_by('create_time')
+
+             elif ordering == '-create_time': # 收藏时间 (New -> Old)
+                 queryset = queryset.order_by('-create_time')
+
         return queryset
 
     def perform_create(self, serializer):
