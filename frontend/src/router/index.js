@@ -58,11 +58,33 @@ const routes = [
         path: '/login', 
         name: 'Login',
         component: () => import('../views/Login.vue') 
+    },
+    {
+        path: '/company',
+        component: () => import('@/views/company/CompanyLayout.vue'),
+        meta: { requiresAuth: true, role: 2 },
+        children: [
+            {
+                path: 'jobs',
+                name: 'JobManagement',
+                component: () => import('@/views/company/JobManagement.vue')
+            },
+            {
+                path: 'applications',
+                name: 'ApplicationManagement',
+                component: () => import('@/views/company/ApplicationManagement.vue')
+            },
+            {
+                path: 'profile',
+                name: 'CompanyProfile',
+                component: () => import('@/views/company/CompanyProfile.vue')
+            }
+        ]
     }
 ]
 
 const router = createRouter({
-    history: createWebHistory(),
+    history: createWebHistory(import.meta.env.BASE_URL),
     routes,
     scrollBehavior(to, from, savedPosition) {
         if (savedPosition) {

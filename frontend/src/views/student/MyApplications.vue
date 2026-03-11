@@ -18,6 +18,72 @@
       </div>
     </div>
 
+    <!-- Filter Bar -->
+    <el-card class="filter-card" shadow="never">
+      <el-form :inline="true" :model="filterForm" class="filter-form">
+        <div class="filter-row search-row">
+            <el-form-item label="职位名称" class="search-item">
+                <el-input 
+                    v-model="filterForm.search" 
+                    placeholder="请输入职位名称" 
+                    clearable 
+                    @change="handleFilterChange" 
+                >
+                    <template #prefix>
+                        <el-icon><Search /></el-icon>
+                    </template>
+                </el-input>
+            </el-form-item>
+            <div class="search-actions">
+                <el-form-item>
+                    <el-button type="primary" @click="fetchApplications">搜索</el-button>
+                    <el-button @click="resetFilter">重置</el-button>
+                </el-form-item>
+            </div>
+        </div>
+        <div class="filter-row">
+            <el-form-item label="投递状态">
+            <el-select 
+                v-model="filterForm.status" 
+                placeholder="请选择投递状态" 
+                clearable 
+                class="filter-select"
+                :class="{ 'active-filter': filterForm.status !== null && filterForm.status !== '' && filterForm.status !== undefined }"
+                :teleported="true"
+                @change="handleFilterChange" 
+                style="width: 180px"
+            >
+                <el-option label="通过" :value="4" />
+                <el-option label="面试中" :value="2" />
+                <el-option label="不合适" :value="3" />
+                <el-option label="已查看" :value="1" />
+                <el-option label="未查看" :value="0" />
+            </el-select>
+            </el-form-item>
+            <el-form-item label="排序方式">
+            <el-select 
+                v-model="filterForm.ordering" 
+                placeholder="请选择排序方式" 
+                clearable 
+                class="filter-select"
+                :class="{ 'active-filter': filterForm.ordering }"
+                :teleported="true"
+                @change="handleFilterChange" 
+                style="width: 180px"
+            >
+                <el-option label="投递时间 (新到旧)" value="-create_time" />
+                <el-option label="投递时间 (旧到新)" value="create_time" />
+                <el-option label="薪资 (高到低)" value="-salary" />
+                <el-option label="薪资 (低到高)" value="salary" />
+            </el-select>
+            </el-form-item>
+            <el-form-item label="工作地点">
+            <el-input v-model="filterForm.location" placeholder="请输入城市" clearable @change="handleFilterChange" style="width: 180px" />
+            </el-form-item>
+        </div>
+      </el-form>
+    </el-card>
+
     <div v-loading="loading">
       <el-empty v-if="!loading && applications.length === 0" description="暂无投递记录" />
       
@@ -62,6 +128,7 @@
                 <el-tag :type="getStatusType(item.status)" class="status-tag" size="large">
                   {{ getStatusText(item.status) }}
                 </el-tag>
+                <el-button type="success" plain @click.stop="openChat(item)">联系企业</el-button>
                 <el-button type="danger" @click.stop="handleCancel(item)">取消投递</el-button>
                 <el-button type="primary" @click.stop="viewDetail(item.job_detail.id)">查看详情</el-button>
               </div>
@@ -70,25 +137,51 @@
         </el-col>
       </el-row>
     </div>
+
+    <!-- Chat Dialog -->
+    <chat-dialog
+      v-model="chatVisible"
+      :application-id="currentApplicationId"
+      :other-user="currentOtherUser"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { getApplications, cancelApplication } from '@/api/recruitment'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Postcard } from '@element-plus/icons-vue'
+import { Postcard, Search } from '@element-plus/icons-vue'
+import ChatDialog from '@/components/ChatDialog.vue'
 
 const router = useRouter()
 const loading = ref(false)
 const applications = ref([])
 const defaultCompanyLogo = 'https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png'
 
+// Chat state
+const chatVisible = ref(false)
+const currentApplicationId = ref(null)
+const currentOtherUser = ref({ name: '', avatar: '' })
+
+const filterForm = reactive({
+  search: '',
+  status: null,
+  location: '',
+  ordering: null
+})
+
 const fetchApplications = async () => {
   loading.value = true
   try {
-    const res = await getApplications()
+    const params = {
+      search: filterForm.search || undefined,
+      status: filterForm.status !== null && filterForm.status !== undefined ? filterForm.status : undefined,
+      location: filterForm.location || undefined,
+      ordering: filterForm.ordering || undefined
+    }
+    const res = await getApplications(params)
     applications.value = res.results || res
   } catch (error) {
     console.error('Fetch applications failed:', error)
@@ -98,8 +191,29 @@ const fetchApplications = async () => {
   }
 }
 
+const handleFilterChange = () => {
+  fetchApplications()
+}
+
+const resetFilter = () => {
+  filterForm.search = ''
+  filterForm.status = null
+  filterForm.location = ''
+  filterForm.ordering = null
+  fetchApplications()
+}
+
 const viewDetail = (id) => {
   router.push(`/jobs/${id}`)
+}
+
+const openChat = (item) => {
+  currentApplicationId.value = item.id
+  currentOtherUser.value = {
+    name: item.job_detail?.company?.company_name || 'HR',
+    avatar: item.job_detail?.company?.logo || defaultCompanyLogo
+  }
+  chatVisible.value = true
 }
 
 const handleCancel = (item) => {
@@ -135,22 +249,24 @@ const formatDate = (dateString) => {
 
 const getStatusText = (status) => {
   const map = {
-    1: '已投递',
-    2: '被查看',
-    3: '面试中',
-    4: '不合适',
-    5: '录用'
+    0: '未查看',
+    1: '已查看',
+    2: '面试中',
+    3: '不合适',
+    4: '通过',
+    5: '不通过'
   }
   return map[status] || '未知状态'
 }
 
 const getStatusType = (status) => {
   const map = {
-    1: 'info',
-    2: 'primary',
-    3: 'warning',
-    4: 'danger',
-    5: 'success'
+    0: 'info',
+    1: 'primary',
+    2: 'warning',
+    3: 'danger',
+    4: 'success',
+    5: 'info'
   }
   return map[status] || 'info'
 }
@@ -221,6 +337,95 @@ onMounted(() => {
 .header-right {
   display: flex;
   align-items: center;
+}
+
+.filter-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.search-row {
+    flex-wrap: nowrap;
+}
+
+.search-item {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.search-actions {
+    flex-shrink: 0;
+}
+
+.search-item :deep(.el-form-item__content) {
+    width: 100%;
+}
+
+.filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: -18px;
+}
+
+/* Filter Styles Override */
+:deep(.el-select) {
+  --el-select-border-color-hover: transparent;
+  --el-select-input-focus-border-color: transparent;
+}
+
+:deep(.el-select__wrapper) {
+  background-color: #f2f3f5;
+  border-radius: 20px;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px 12px;
+  min-height: 32px;
+  transition: all 0.3s;
+}
+
+:deep(.el-select__wrapper:hover) {
+  background-color: #e5e6eb;
+}
+
+:deep(.el-select__wrapper.is-focused) {
+  box-shadow: none !important;
+}
+
+/* Fix dropdown positioning */
+:deep(.el-select__popper) {
+    top: 100% !important;
+    left: 0 !important;
+    margin-top: 8px !important;
+}
+
+/* Active State (Blue) */
+.active-filter :deep(.el-select__wrapper) {
+  background-color: #e6f0ff;
+  color: #409EFF;
+}
+
+.active-filter :deep(.el-select__placeholder) {
+  color: #409EFF !important;
+  font-weight: bold;
+}
+
+.active-filter :deep(.el-select__selected-item) {
+  color: #409EFF !important;
+  font-weight: bold;
+}
+
+.active-filter :deep(.el-select__caret) {
+  color: #409EFF;
 }
 
 .stat-card {

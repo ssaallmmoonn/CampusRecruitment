@@ -18,6 +18,69 @@
       </div>
     </div>
 
+    <!-- Filter Bar -->
+    <el-card class="filter-card" shadow="never">
+      <el-form :inline="true" :model="filterForm" class="filter-form">
+        <div class="filter-row search-row">
+            <el-form-item label="职位名称" class="search-item">
+                <el-input 
+                    v-model="filterForm.search" 
+                    placeholder="请输入职位名称" 
+                    clearable 
+                    @change="handleFilterChange" 
+                >
+                    <template #prefix>
+                        <el-icon><Search /></el-icon>
+                    </template>
+                </el-input>
+            </el-form-item>
+            <div class="search-actions">
+                <el-form-item>
+                    <el-button type="primary" @click="fetchCollections">搜索</el-button>
+                    <el-button @click="resetFilter">重置</el-button>
+                </el-form-item>
+            </div>
+        </div>
+        <div class="filter-row">
+            <el-form-item label="投递状态">
+            <el-select 
+                v-model="filterForm.is_applied" 
+                placeholder="请选择投递状态" 
+                clearable 
+                class="filter-select"
+                :class="{ 'active-filter': filterForm.is_applied }"
+                :teleported="true"
+                @change="handleFilterChange('is_applied')" 
+                style="width: 180px"
+            >
+                <el-option label="已投递" value="true" />
+                <el-option label="未投递" value="false" />
+            </el-select>
+            </el-form-item>
+            <el-form-item label="排序方式">
+            <el-select 
+                v-model="filterForm.ordering" 
+                placeholder="请选择排序方式" 
+                clearable 
+                class="filter-select"
+                :class="{ 'active-filter': filterForm.ordering }"
+                :teleported="true"
+                @change="handleFilterChange('ordering')" 
+                style="width: 180px"
+            >
+                <el-option label="投递时间 (新到旧)" value="-deliveries" />
+                <el-option label="投递时间 (旧到新)" value="deliveries" />
+                <el-option label="薪资 (高到低)" value="-salary" />
+                <el-option label="薪资 (低到高)" value="salary" />
+            </el-select>
+            </el-form-item>
+            <el-form-item label="工作地点">
+            <el-input v-model="filterForm.location" placeholder="请输入城市" clearable @change="handleFilterChange" style="width: 180px" />
+            </el-form-item>
+        </div>
+      </el-form>
+    </el-card>
+
     <div v-loading="loading">
       <el-empty v-if="!loading && collections.length === 0" description="暂无收藏的职位" />
       
@@ -60,6 +123,12 @@
 
               <div class="job-actions">
                 <el-button type="danger" plain @click.stop="handleUncollect(item)">取消收藏</el-button>
+                <el-button 
+                    :type="item.job_detail.is_applied ? 'info' : 'primary'" 
+                    @click.stop="handleApplyClick(item)"
+                >
+                    {{ item.job_detail.is_applied ? '已投递' : '立即投递' }}
+                </el-button>
                 <el-button type="primary" @click.stop="viewDetail(item.job_detail.id)">查看详情</el-button>
               </div>
             </div>
@@ -67,25 +136,137 @@
         </el-col>
       </el-row>
     </div>
+    
+    <!-- Application Dialog -->
+    <el-dialog v-model="applyDialogVisible" title="投递简历" width="500px">
+      <el-form :model="applyForm" label-width="100px">
+        <el-form-item label="选择简历">
+          <el-select v-model="applyForm.resume" placeholder="请选择一份简历">
+            <el-option
+              v-for="item in resumes"
+              :key="item.id"
+              :label="item.resume_name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div v-if="resumes.length === 0" class="no-resume-tip">
+        您还没有任何简历，请先创建一份 <router-link to="/resume">创建简历</router-link>.
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="applyDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitApply" :disabled="!applyForm.resume">确认投递</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getBehaviors, toggleCollect } from '@/api/recruitment'
+import { getBehaviors, toggleCollect, applyJob as apiApplyJob, getResumes, checkApplicationStatus, cancelApplication } from '@/api/recruitment'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { StarFilled } from '@element-plus/icons-vue'
+import { StarFilled, Search } from '@element-plus/icons-vue'
+import { reactive } from 'vue'
 
 const router = useRouter()
 const loading = ref(false)
 const collections = ref([])
 const defaultCompanyLogo = 'https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png'
 
+// Application related
+const applyDialogVisible = ref(false)
+const resumes = ref([])
+const applyForm = reactive({
+  resume: '',
+  jobId: null
+})
+
+const handleApplyClick = async (item) => {
+    // Check if already applied
+    try {
+        const appRes = await checkApplicationStatus(item.job_detail.id)
+        if (appRes.applied) {
+            // If already applied, ask to cancel
+            ElMessageBox.confirm(
+                '确定要取消该职位的投递吗？',
+                '提示',
+                {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning',
+                }
+            ).then(async () => {
+                try {
+                    await cancelApplication(appRes.application_id)
+                    ElMessage.success('已取消投递')
+                    // Update local state
+                    item.job_detail.is_applied = false
+                } catch (error) {
+                    console.error('Cancel application failed:', error)
+                    ElMessage.error('取消投递失败')
+                }
+            }).catch(() => {})
+            return
+        }
+        
+        applyForm.jobId = item.job_detail.id
+        openApplyDialog()
+    } catch (error) {
+        console.error(error)
+        ElMessage.error('检查投递状态失败')
+    }
+}
+
+const openApplyDialog = async () => {
+    applyDialogVisible.value = true
+    try {
+        const res = await getResumes()
+        resumes.value = res.results || res
+    } catch (error) {
+        ElMessage.error('加载简历失败')
+    }
+}
+
+const submitApply = async () => {
+  try {
+      await apiApplyJob({
+          job: applyForm.jobId,
+          resume: applyForm.resume
+      })
+      ElMessage.success('简历投递成功！')
+      applyDialogVisible.value = false
+      // Update local state
+      const item = collections.value.find(c => c.job_detail.id === applyForm.jobId)
+      if (item) {
+          item.job_detail.is_applied = true
+      }
+  } catch (error) {
+      // Error handled in interceptor
+  }
+}
+
+const filterForm = reactive({
+  search: '',
+  is_applied: null,
+  location: '',
+  ordering: null
+})
+
 const fetchCollections = async () => {
   loading.value = true
   try {
-    const res = await getBehaviors({ behavior_type: 2 })
+    const params = {
+      behavior_type: 2,
+      search: filterForm.search || undefined,
+      is_applied: filterForm.is_applied || undefined,
+      location: filterForm.location || undefined,
+      ordering: filterForm.ordering || undefined
+    }
+    const res = await getBehaviors(params)
     collections.value = res.results || res
   } catch (error) {
     console.error('Fetch collections failed:', error)
@@ -93,6 +274,26 @@ const fetchCollections = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleFilterChange = (field) => {
+  if (field === 'ordering') {
+      if ((filterForm.ordering === 'deliveries' || filterForm.ordering === '-deliveries') && !filterForm.is_applied) {
+        filterForm.is_applied = 'true'
+      } else if (filterForm.ordering !== 'deliveries' && filterForm.ordering !== '-deliveries' && filterForm.is_applied === 'true') {
+        filterForm.is_applied = null
+      }
+  }
+  
+  fetchCollections()
+}
+
+const resetFilter = () => {
+  filterForm.search = ''
+  filterForm.is_applied = null
+  filterForm.location = ''
+  filterForm.ordering = null
+  fetchCollections()
 }
 
 const handleUncollect = (item) => {
@@ -193,6 +394,93 @@ onMounted(() => {
 .header-right {
   display: flex;
   align-items: center;
+}
+
+.filter-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.search-row {
+    flex-wrap: nowrap;
+}
+
+.search-item {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.search-actions {
+    flex-shrink: 0;
+}
+
+.search-item :deep(.el-form-item__content) {
+    width: 100%;
+}
+
+.filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: -18px;
+}
+
+/* Filter Styles Override */
+:deep(.el-select) {
+  --el-select-border-color-hover: transparent;
+  --el-select-input-focus-border-color: transparent;
+}
+
+:deep(.el-select__wrapper) {
+  background-color: #f2f3f5;
+  border-radius: 20px;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px 12px;
+  min-height: 32px;
+  transition: all 0.3s;
+}
+
+:deep(.el-select__wrapper:hover) {
+  background-color: #e5e6eb;
+}
+
+:deep(.el-select__wrapper.is-focused) {
+  box-shadow: none !important;
+}
+
+/* Fix dropdown positioning */
+:deep(.el-select__popper) {
+    top: 100% !important;
+    left: 0 !important;
+    margin-top: 8px !important;
+}
+
+/* Active State (Blue) */
+.active-filter :deep(.el-select__wrapper) {
+  background-color: #e6f0ff;
+  color: #409EFF;
+}
+
+.active-filter :deep(.el-select__placeholder) {
+  color: #409EFF !important;
+}
+
+.active-filter :deep(.el-select__selected-item) {
+  color: #409EFF !important;
+}
+
+.active-filter :deep(.el-select__caret) {
+  color: #409EFF;
 }
 
 .stat-card {

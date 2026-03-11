@@ -110,13 +110,21 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
         return Response(serializer.data)
 
-class CompanyPublicView(generics.RetrieveAPIView):
+class CompanyPublicView(generics.RetrieveUpdateAPIView):
     """
     Public view for company details
     """
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
-    permission_classes = (permissions.AllowAny,)
+    # Allow Any for GET, but IsAuthenticated for PUT/PATCH (and maybe check if it's the owner)
+    # But generics.RetrieveUpdateAPIView uses one permission class list.
+    # We can override get_permissions.
+    
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
     lookup_field = 'id'
 
     def get_object(self):
@@ -129,3 +137,36 @@ class CompanyPublicView(generics.RetrieveAPIView):
         obj = get_object_or_404(queryset, **filter_kwargs)
         self.check_object_permissions(self.request, obj)
         return obj
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Security check: Ensure the logged-in user owns this company profile
+        if request.user.id != instance.user.id:
+            return Response({'detail': 'You do not have permission to edit this profile.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        
+        # Check if data has changed
+        has_changed = False
+        validated_data = serializer.validated_data
+        
+        # Check model fields
+        for field, value in validated_data.items():
+            if hasattr(instance, field):
+                current_value = getattr(instance, field)
+                if current_value != value:
+                    has_changed = True
+                    break
+        
+        if not has_changed:
+            return Response({'message': '信息无发生更改', 'status': 'unchanged'}, status=status.HTTP_200_OK)
+
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)

@@ -11,4 +11,5 @@ urlpatterns = [
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('companies/<int:id>/', CompanyPublicView.as_view(), name='company-detail'),
+    path('profile/', UserProfileView.as_view(), name='profile'),
 ]

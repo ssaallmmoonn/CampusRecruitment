@@ -42,6 +42,9 @@ export const useUserStore = defineStore('user', {
             console.error('Failed to fetch user info', error)
         }
     },
+    setUserInfo(info) {
+        this.userInfo = info
+    },
     async register(data) {
         try {
             await request.post('/users/register/', data)

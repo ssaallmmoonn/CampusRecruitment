@@ -6,3 +6,11 @@ export function getCompanyDetail(id) {
     method: 'get'
   })
 }
+
+export function updateCompanyProfile(id, data) {
+  return request({
+    url: `/users/profile/`,
+    method: 'patch',
+    data
+  })
+}

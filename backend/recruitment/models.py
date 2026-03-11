@@ -47,6 +47,7 @@ class JobApplication(models.Model):
         (1, '已查看'),
         (2, '有意向'),
         (3, '不合适'),
+        (4, '通过'),
     )
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='applications', verbose_name='学生', null=True)
@@ -63,3 +64,16 @@ class JobApplication(models.Model):
         verbose_name = '职位申请'
         verbose_name_plural = verbose_name
         unique_together = ('student', 'job')
+
+class ChatMessage(models.Model):
+    sender = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='sent_messages', verbose_name='发送者')
+    receiver = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='received_messages', verbose_name='接收者')
+    application = models.ForeignKey(JobApplication, on_delete=models.CASCADE, related_name='messages', verbose_name='关联申请')
+    content = models.TextField(verbose_name='消息内容')
+    is_read = models.BooleanField(default=False, verbose_name='是否已读')
+    create_time = models.DateTimeField(auto_now_add=True, verbose_name='发送时间')
+
+    class Meta:
+        verbose_name = '聊天消息'
+        verbose_name_plural = verbose_name
+        ordering = ['create_time']

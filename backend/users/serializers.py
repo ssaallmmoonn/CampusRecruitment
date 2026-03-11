@@ -14,6 +14,17 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        username = attrs.get(self.username_field)
+        password = attrs.get('password')
+
+        if username:
+            if not User.objects.filter(username=username).exists():
+                raise serializers.ValidationError({"detail": "user_not_found"})
+            
+            user = User.objects.get(username=username)
+            if not user.check_password(password):
+                raise serializers.ValidationError({"detail": "password_error"})
+
         data = super().validate(attrs)
         data['role'] = self.user.role
         data['username'] = self.user.username
@@ -66,6 +77,10 @@ class CompanySerializer(serializers.ModelSerializer):
                   'contact_person', 'contact_phone', 'description', 'address',
                   'logo', 'industry', 'scale', 'nature')
         read_only_fields = ('user', 'audit_status')
+
+    def update(self, instance, validated_data):
+        # Handle nested user data if needed (though username/email usually not editable here)
+        return super().update(instance, validated_data)
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

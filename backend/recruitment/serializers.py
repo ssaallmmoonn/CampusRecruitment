@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Resume, JobApplication, Behavior
+from .models import Resume, JobApplication, Behavior, ChatMessage
 from jobs.serializers import JobSerializer
 from users.serializers import StudentSerializer
 
@@ -49,3 +49,61 @@ class BehaviorSerializer(serializers.ModelSerializer):
         model = Behavior
         fields = '__all__'
         read_only_fields = ('student', 'create_time')
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    sender_detail = serializers.SerializerMethodField()
+    receiver_detail = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ChatMessage
+        fields = '__all__'
+        read_only_fields = ('sender', 'receiver', 'create_time', 'is_read')
+
+    def get_sender_detail(self, obj):
+        user = obj.sender
+        return self._get_user_info(user)
+
+    def get_receiver_detail(self, obj):
+        user = obj.receiver
+        return self._get_user_info(user)
+
+    def _get_user_info(self, user):
+        if user.role == 1: # Student
+            try:
+                profile = user.student_profile
+                avatar_url = None
+                if profile.avatar:
+                    request = self.context.get('request')
+                    if request:
+                        avatar_url = request.build_absolute_uri(profile.avatar.url)
+                    else:
+                        avatar_url = profile.avatar.url
+                
+                return {
+                    'id': user.id,
+                    'name': profile.name or user.username,
+                    'avatar': avatar_url,
+                    'role': 1
+                }
+            except:
+                return {'id': user.id, 'name': user.username, 'role': 1}
+        elif user.role == 2: # Company
+            try:
+                profile = user.company_profile
+                avatar_url = None
+                if profile.logo:
+                    request = self.context.get('request')
+                    if request:
+                        avatar_url = request.build_absolute_uri(profile.logo.url)
+                    else:
+                        avatar_url = profile.logo.url
+                
+                return {
+                    'id': user.id,
+                    'name': profile.company_name or user.username,
+                    'avatar': avatar_url,
+                    'role': 2
+                }
+            except:
+                return {'id': user.id, 'name': user.username, 'role': 2}
+        return {'id': user.id, 'name': user.username, 'role': user.role}

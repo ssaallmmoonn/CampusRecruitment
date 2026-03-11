@@ -447,9 +447,15 @@
               </div>
 
               <div class="job-actions">
-                <el-button type="primary" class="apply-btn" @click.stop="applyJob(job.id)">立即投递</el-button>
-                <el-button @click.stop="viewDetail(job.id)">查看详情</el-button>
-              </div>
+  <el-button 
+    :type="job.is_applied ? 'info' : 'primary'" 
+    class="apply-btn" 
+    @click.stop="applyJob(job.id)"
+  >
+    {{ job.is_applied ? '已投递' : '立即投递' }}
+  </el-button>
+  <el-button @click.stop="viewDetail(job.id)">查看详情</el-button>
+</div>
             </div>
           </el-card>
         </el-col>
@@ -469,6 +475,31 @@
         />
       </div>
     </div>
+
+    <!-- Application Dialog -->
+    <el-dialog v-model="applyDialogVisible" title="投递简历" width="500px">
+      <el-form :model="applyForm" label-width="100px">
+        <el-form-item label="选择简历">
+          <el-select v-model="applyForm.resume" placeholder="请选择一份简历">
+            <el-option
+              v-for="item in resumes"
+              :key="item.id"
+              :label="item.resume_name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div v-if="resumes.length === 0" class="no-resume-tip">
+        您还没有任何简历，请先创建一份 <router-link to="/resume">创建简历</router-link>.
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="applyDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitApply" :disabled="!applyForm.resume">确认投递</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -479,11 +510,13 @@ export default {
 </script>
 
 <script setup>
-import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { ref, reactive, onMounted, onActivated, watch, computed } from 'vue'
 import { getJobs } from '@/api/jobs'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
+import { applyJob as apiApplyJob, getResumes, checkApplicationStatus, cancelApplication } from '@/api/recruitment'
+import { useUserStore } from '@/stores/user'
 
 import majorJson from '@/assets/major.json'
 import jobJson from '@/assets/jobs.json'
@@ -633,6 +666,10 @@ const clearFilters = () => {
 }
 
 const fetchJobs = async () => {
+  // If component is deactivated, do NOT fetch. 
+  // This is a safety check for async calls.
+  if (route.name !== 'JobBoard') return
+
   loading.value = true
   try {
     const params = {
@@ -708,10 +745,89 @@ const goToCompanyDetail = (companyId) => {
   }
 }
 
+
+
+// ... existing imports
+
+const userStore = useUserStore()
+
+// Application related
+const applyDialogVisible = ref(false)
+const resumes = ref([])
+const applyForm = reactive({
+  resume: '',
+  jobId: null
+})
+
+const handleApplyClick = async (jobId) => {
+    if (!userStore.isLoggedIn) {
+        ElMessage.warning('请先登录后再投递')
+        router.push('/login')
+        return
+    }
+    
+    // Check if already applied
+    try {
+        const appRes = await checkApplicationStatus(jobId)
+        if (appRes.applied) {
+            // If already applied, ask to cancel
+            ElMessageBox.confirm(
+                '确定要取消该职位的投递吗？',
+                '提示',
+                {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning',
+                }
+            ).then(async () => {
+                try {
+                    await cancelApplication(appRes.application_id)
+                    ElMessage.success('已取消投递')
+                    // Refresh job list to update status
+                    fetchJobs()
+                } catch (error) {
+                    console.error('Cancel application failed:', error)
+                    ElMessage.error('取消投递失败')
+                }
+            }).catch(() => {})
+            return
+        }
+        
+        applyForm.jobId = jobId
+        openApplyDialog()
+    } catch (error) {
+        console.error(error)
+        ElMessage.error('检查投递状态失败')
+    }
+}
+
+const openApplyDialog = async () => {
+    applyDialogVisible.value = true
+    try {
+        const res = await getResumes()
+        resumes.value = res.results || res
+    } catch (error) {
+        ElMessage.error('加载简历失败')
+    }
+}
+
+const submitApply = async () => {
+  try {
+      await apiApplyJob({
+          job: applyForm.jobId,
+          resume: applyForm.resume
+      })
+      ElMessage.success('简历投递成功！')
+      applyDialogVisible.value = false
+      // Refresh job list to update status
+      fetchJobs()
+  } catch (error) {
+      // Error handled in interceptor
+  }
+}
+
 const applyJob = (id) => {
-  // TODO: Implement apply job logic
-  console.log('Apply job:', id)
-  ElMessage.success('投递功能开发中')
+  handleApplyClick(id)
 }
 
 const formatDate = (dateStr) => {
@@ -720,7 +836,26 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString()
 }
 
+const isActivated = ref(false)
+
 onMounted(() => {
+  // Initial load
+  if (!isActivated.value) {
+      initPage()
+  }
+})
+
+onActivated(() => {
+    isActivated.value = true
+    // When returning from keep-alive, we don't need to refetch if we want to keep scroll
+    // But we might want to update filters if URL changed from outside? 
+    // Usually keep-alive handles state.
+    
+    // Check if we need to restore anything specific or just let it be.
+    // If the user navigates back, the component is activated.
+})
+
+const initPage = () => {
   const queryParams = route.query
   
   // Reset all filters first to ensure clean state
@@ -777,12 +912,24 @@ onMounted(() => {
   }
 
   fetchJobs()
-})
+}
+
+const lastQueryStr = ref(JSON.stringify(route.query))
 
 // Watch route changes to update filters or clear them
 watch(
   () => route.query,
   (newQuery) => {
+    // Only fetch if we are actually on the JobBoard page.
+    if (route.name !== 'JobBoard') return
+
+    // If query hasn't actually changed (deep comparison), do nothing.
+    // This prevents re-fetching when returning from keep-alive details page
+    // where route object is updated but params are effectively same.
+    const newQueryStr = JSON.stringify(newQuery)
+    if (newQueryStr === lastQueryStr.value) return
+    lastQueryStr.value = newQueryStr
+
     // Reset all filters first - CRITICAL for "Clear conditions when re-entering"
     // If newQuery is empty (e.g. clicking "Job Board" link), this clears everything.
     searchForm.search = ''

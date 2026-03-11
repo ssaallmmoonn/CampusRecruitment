@@ -1,13 +1,15 @@
+from django.db import models
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Resume, JobApplication, Behavior
+from .models import Resume, JobApplication, Behavior, ChatMessage
 from .serializers import (
     ResumeSerializer, 
     JobApplicationSerializer, 
     JobApplicationCreateSerializer,
-    BehaviorSerializer
+    BehaviorSerializer,
+    ChatMessageSerializer
 )
 from jobs.models import Job
 
@@ -61,8 +63,9 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
     - Companies can view applications for their jobs and update status.
     """
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ['status']
+    search_fields = ['job__job_name', 'student__name', 'student__user__username']
     ordering_fields = ['create_time', 'update_time']
 
     def get_serializer_class(self):
@@ -75,7 +78,7 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         if user.role == 1: # Student: see own applications
             return JobApplication.objects.filter(student=user.student_profile)
         elif user.role == 2: # Company: see applications for their jobs
-            return JobApplication.objects.filter(job__company=user.company_profile)
+            return JobApplication.objects.filter(job__company=user.company_profile).select_related('student', 'job', 'resume')
         return JobApplication.objects.none()
 
     def perform_create(self, serializer):
@@ -146,6 +149,102 @@ class BehaviorViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Behavior.objects.filter(student=self.request.user.student_profile)
 
+    def filter_queryset(self, queryset):
+        # Apply standard filters first
+        # But we must be careful not to call super().filter_queryset() if it doesn't exist on ModelViewSet
+        # Actually ModelViewSet uses filter_backends.
+        
+        for backend in list(self.filter_backends):
+            queryset = backend().filter_queryset(self.request, queryset, self)
+
+        # Custom filtering for job properties (which are in job_detail/job relation)
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(job__job_name__icontains=search)
+
+        is_applied = self.request.query_params.get('is_applied')
+        if is_applied is not None:
+            user = self.request.user
+            # We need to filter based on whether THIS user has applied for the job
+            # The job is related via 'job' field on Behavior
+            # JobApplication has 'student' and 'job'
+            # We want Behaviors where behavior.job has a JobApplication by this student
+            
+            applied_jobs = JobApplication.objects.filter(student__user=user).values_list('job_id', flat=True)
+            
+            if is_applied.lower() == 'true':
+                queryset = queryset.filter(job__id__in=applied_jobs)
+            elif is_applied.lower() == 'false':
+                queryset = queryset.exclude(job__id__in=applied_jobs)
+        
+        location = self.request.query_params.get('location')
+        if location:
+            queryset = queryset.filter(job__location__icontains=location)
+            
+        # Custom ordering
+        ordering = self.request.query_params.get('ordering')
+        if ordering:
+             if ordering == 'salary' or ordering == '-salary':
+                 # Extract number before 'k' from salary string (e.g. '12k-20k' -> 12)
+                 from django.db.models import Case, When, Value, IntegerField
+                 from django.db.models.functions import Substr, StrIndex, Cast, Lower
+                 
+                 # Logic: 
+                 # 1. Lowercase the salary string
+                 # 2. Find index of 'k'
+                 # 3. Substr from start to 'k'-1
+                 # 4. Cast to integer
+                 # This assumes salary format is always like "XXk..." or "Xk..."
+                 
+                 queryset = queryset.annotate(
+                     salary_num=Cast(
+                         Substr(
+                             Lower('job__salary'), 
+                             1, 
+                             StrIndex(Lower('job__salary'), Value('k')) - 1
+                         ),
+                         IntegerField()
+                     )
+                 )
+                 
+                 if ordering == 'salary':
+                     queryset = queryset.order_by('salary_num')
+                 else:
+                     queryset = queryset.order_by('-salary_num')
+                     
+             elif ordering == 'deliveries': # 投递时间 (Old -> New)
+                  from django.db.models import Max
+                  from django.db.models import F
+                  
+                  # 1. Annotate app_time
+                  queryset = queryset.annotate(
+                      app_time=Max('job__applications__create_time', 
+                                   filter=models.Q(job__applications__student__user=self.request.user))
+                  )
+                  
+                  # 2. Filter out unapplied jobs (app_time is NULL)
+                  queryset = queryset.filter(app_time__isnull=False)
+                  
+                  # 3. Sort: applied jobs (by time ASC)
+                  queryset = queryset.order_by('app_time') 
+                  
+             elif ordering == '-deliveries': # 投递时间 (New -> Old)
+                  from django.db.models import Max, F
+                  
+                  # 1. Annotate app_time
+                  queryset = queryset.annotate(
+                      app_time=Max('job__applications__create_time', 
+                                   filter=models.Q(job__applications__student__user=self.request.user))
+                  )
+                  
+                  # 2. Filter out unapplied jobs (app_time is NULL)
+                  queryset = queryset.filter(app_time__isnull=False)
+                  
+                  # 3. Sort: applied jobs (by time DESC)
+                  queryset = queryset.order_by('-app_time')
+
+        return queryset
+
     def perform_create(self, serializer):
         # Check if behavior already exists (e.g. repeated collections)
         student = self.request.user.student_profile
@@ -211,3 +310,38 @@ class BehaviorViewSet(viewsets.ModelViewSet):
         is_collected = Behavior.objects.filter(student=student, job_id=job_id, behavior_type=2).exists()
         
         return Response({'collected': is_collected})
+
+class ChatMessageViewSet(viewsets.ModelViewSet):
+    serializer_class = ChatMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['application']
+    ordering_fields = ['create_time']
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 1: # Student
+            # Return messages for applications where student is self
+            return ChatMessage.objects.filter(application__student__user=user)
+        elif user.role == 2: # Company
+            # Return messages for applications where job company is self
+            return ChatMessage.objects.filter(application__job__company__user=user)
+        return ChatMessage.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        application = serializer.validated_data['application']
+        
+        # Determine receiver
+        if user.role == 1: # Student sending
+            if application.student.user != user:
+                raise permissions.exceptions.PermissionDenied("You can only send messages for your own applications.")
+            receiver = application.job.company.user
+        elif user.role == 2: # Company sending
+            if application.job.company.user != user:
+                 raise permissions.exceptions.PermissionDenied("You can only send messages for your company's jobs.")
+            receiver = application.student.user
+        else:
+             raise permissions.exceptions.PermissionDenied("Invalid user role.")
+
+        serializer.save(sender=user, receiver=receiver)

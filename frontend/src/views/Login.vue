@@ -139,9 +139,15 @@ const registerForm = reactive({
 const handleLogin = async () => {
   loading.value = true
   try {
-    await userStore.login(loginForm.username, loginForm.password)
+    const res = await userStore.login(loginForm.username, loginForm.password)
     ElMessage.success('登录成功')
-    router.push('/')
+    
+    // Redirect based on role
+    if (res.role === 2) {
+      router.push('/company/jobs')
+    } else {
+      router.push('/')
+    }
   } catch (error) {
     // Error handled in interceptor
   } finally {

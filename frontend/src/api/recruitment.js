@@ -40,10 +40,19 @@ export function applyJob(data) {
   })
 }
 
-export function getApplications() {
+export function getApplications(params) {
   return request({
     url: '/recruitment/applications/',
-    method: 'get'
+    method: 'get',
+    params
+  })
+}
+
+export function updateApplicationStatus(id, status) {
+  return request({
+    url: `/recruitment/applications/${id}/update_status/`,
+    method: 'post',
+    data: { status }
   })
 }
 
@@ -82,7 +91,7 @@ export function getBehaviors(params) {
 export function toggleCollect(data) {
   return request({
     url: '/recruitment/behaviors/toggle_collect/',
-    method: 'post',
+    method: 'post', 
     data
   })
 }
@@ -92,5 +101,22 @@ export function checkCollectStatus(params) {
     url: '/recruitment/behaviors/check_status/',
     method: 'get',
     params
+  })
+}
+
+// Messages
+export function getMessages(params) {
+  return request({
+    url: '/recruitment/messages/',
+    method: 'get',
+    params
+  })
+}
+
+export function sendMessage(data) {
+  return request({
+    url: '/recruitment/messages/',
+    method: 'post',
+    data
   })
 }
