@@ -8,9 +8,9 @@ class User(AbstractUser):
     username, password, first_name, last_name, email, is_staff, is_active, date_joined
     """
     ROLE_CHOICES = (
+        (0, 'Administrator'), # Ensure Admin is 0
         (1, 'Student'),
         (2, 'Company'),
-        (3, 'Administrator'),
     )
     role = models.PositiveSmallIntegerField(choices=ROLE_CHOICES, default=1, verbose_name='角色')
     
@@ -75,4 +75,18 @@ class Company(models.Model):
 
     class Meta:
         verbose_name = '企业信息'
+        verbose_name_plural = verbose_name
+
+class Administrator(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True, related_name='admin_profile', verbose_name='关联用户')
+    name = models.CharField(max_length=50, verbose_name='姓名')
+    avatar = models.ImageField(upload_to='admin_avatars/', null=True, blank=True, verbose_name='头像')
+    phone = models.CharField(max_length=20, blank=True, verbose_name='电话')
+    email = models.EmailField(blank=True, null=True, verbose_name='邮箱')
+
+    def __str__(self):
+        return self.name if self.name else self.user.username
+
+    class Meta:
+        verbose_name = '管理员信息'
         verbose_name_plural = verbose_name

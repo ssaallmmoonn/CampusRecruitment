@@ -143,13 +143,17 @@ const handleLogin = async () => {
     ElMessage.success('登录成功')
     
     // Redirect based on role
+    // res contains { username, role, id, access, refresh }
     if (res.role === 2) {
       router.push('/company/jobs')
+    } else if (res.role === 0) { // Admin
+      router.push('/admin/dashboard')
     } else {
       router.push('/')
     }
   } catch (error) {
     // Error handled in interceptor
+    console.error('Login error:', error)
   } finally {
     loading.value = false
   }

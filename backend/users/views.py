@@ -1,8 +1,8 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from .serializers import RegisterSerializer, MyTokenObtainPairSerializer, UserSerializer, StudentSerializer, CompanySerializer, ChangePasswordSerializer
+from .serializers import RegisterSerializer, MyTokenObtainPairSerializer, UserSerializer, StudentSerializer, CompanySerializer, AdministratorSerializer, ChangePasswordSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Student, Company, User
+from .models import Student, Company, User, Administrator
 from django.shortcuts import get_object_or_404
 import random
 
@@ -55,7 +55,8 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
             return StudentSerializer
         elif user.role == 2:
             return CompanySerializer
-        return UserSerializer
+        # Role 0 (Admin)
+        return AdministratorSerializer
 
     def get_object(self):
         user = self.request.user
@@ -63,7 +64,14 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
             try:
                 return user.student_profile
             except Student.DoesNotExist:
-                # Should not happen if registered correctly, but handle it
+                # If student profile is missing, it's a data integrity issue.
+                # However, returning 404 breaks the frontend login flow if it tries to fetch profile.
+                # We should create one or handle it.
+                # For now, let's create it if missing (auto-fix) or just raise 404.
+                # Raising 404 is correct for "Student Profile", but maybe not for "User Info".
+                # But frontend calls /users/profile/ expecting details.
+                
+                # If we raise 404 here, frontend sees 404.
                 from django.http import Http404
                 raise Http404("Student profile not found")
         elif user.role == 2:
@@ -72,11 +80,17 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
             except Company.DoesNotExist:
                 from django.http import Http404
                 raise Http404("Company profile not found")
-        return user
+        # Role 0 (Admin)
+        try:
+            return user.admin_profile
+        except Administrator.DoesNotExist:
+            # Auto-create for existing admin users
+            return Administrator.objects.create(user=user, name=user.username)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         

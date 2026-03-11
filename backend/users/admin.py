@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Student, Company
+from .models import User, Student, Company, Administrator
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
@@ -29,3 +29,8 @@ class CompanyAdmin(admin.ModelAdmin):
     @admin.action(description='驳回审核')
     def reject_company(self, request, queryset):
         queryset.update(audit_status=2)
+
+@admin.register(Administrator)
+class AdministratorAdmin(admin.ModelAdmin):
+    list_display = ('user', 'name', 'phone', 'email')
+    search_fields = ('name', 'user__username', 'email')

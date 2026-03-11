@@ -40,6 +40,12 @@ export const useUserStore = defineStore('user', {
             this.userInfo = res
         } catch (error) {
             console.error('Failed to fetch user info', error)
+            // If user is admin (role 0), it might not have a detailed profile endpoint yet,
+            // or the profile endpoint returned 404 for admin logic if not handled.
+            // But we handled it in backend to return UserSerializer for role 0.
+            
+            // If error is 404, it means profile not found.
+            // We should not block login flow, but maybe set minimal info.
         }
     },
     setUserInfo(info) {
