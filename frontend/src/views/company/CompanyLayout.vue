@@ -46,7 +46,7 @@
                 <span>信息管理</span>
               </template>
               <el-menu-item index="/company/jobs">职位信息</el-menu-item>
-              <el-menu-item index="/company/applications">岗位投递</el-menu-item>
+              <el-menu-item index="/company/applications">职位投递</el-menu-item>
             </el-sub-menu>
           </el-menu>
         </el-aside>
@@ -82,7 +82,7 @@ const activeMenu = computed(() => {
 
 const currentRouteName = computed(() => {
   if (route.path.includes('/jobs')) return '职位信息'
-  if (route.path.includes('/applications')) return '岗位投递'
+  if (route.path.includes('/applications')) return '职位投递'
   if (route.path.includes('/profile')) return '企业资料'
   return ''
 })

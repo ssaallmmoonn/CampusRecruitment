@@ -52,6 +52,11 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="角色" width="100">
+          <template #default>
+            <el-tag type="info">企业</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
             <el-button type="primary" circle size="small" @click="handleEdit(scope.row)">

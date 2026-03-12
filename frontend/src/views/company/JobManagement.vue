@@ -35,7 +35,7 @@
         <el-table-column prop="experience_requirement" label="工作经验" width="150" />
         <el-table-column prop="salary" label="薪资待遇" width="120" />
         <el-table-column prop="degree_requirement" label="学历要求" width="100" />
-        <el-table-column label="职位描述" width="100">
+        <el-table-column label="职业描述与要求" width="150">
           <template #default="scope">
             <el-button type="primary" size="small" @click="showDescription(scope.row)">点击查看</el-button>
           </template>
@@ -45,7 +45,19 @@
           <template #default="scope">
             <el-tag type="success" v-if="scope.row.audit_status === 1">审核通过</el-tag>
             <el-tag type="warning" v-else-if="scope.row.audit_status === 0">待审核</el-tag>
-            <el-tag type="danger" v-else>审核失败</el-tag>
+            <el-popover
+              v-if="scope.row.audit_status === 2"
+              placement="top-start"
+              title="驳回理由"
+              :width="200"
+              trigger="click"
+              :content="scope.row.reject_reason || '无驳回理由'"
+            >
+              <template #reference>
+                <el-tag type="danger" style="cursor: pointer">审核失败</el-tag>
+              </template>
+            </el-popover>
+            <el-tag type="info" v-if="scope.row.audit_status === 3">已下架</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
@@ -75,8 +87,14 @@
     </el-card>
 
     <!-- Dialogs -->
-    <el-dialog v-model="descriptionDialogVisible" title="职位描述" width="50%">
-      <div class="description-content">{{ currentJob?.description }}</div>
+    <el-dialog v-model="descriptionDialogVisible" title="职业描述与要求" width="1000px">
+      <div v-if="currentJob" class="description-content">
+        <h3>职位描述</h3>
+        <div class="text-block">{{ currentJob.description }}</div>
+        <el-divider />
+        <h3>任职要求</h3>
+        <div class="text-block">{{ currentJob.requirements }}</div>
+      </div>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="descriptionDialogVisible = false">关闭</el-button>
@@ -99,7 +117,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="薪资待遇" prop="salary">
-              <el-input v-model="jobForm.salary" placeholder="例如: 10-20k" />
+              <el-input v-model="jobForm.salary" placeholder="例如: 10k-20k" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -125,11 +143,14 @@
           <el-col :span="12">
             <el-form-item label="学历要求" prop="degree_requirement">
               <el-select v-model="jobForm.degree_requirement" style="width: 100%">
-                <el-option label="不限" value="不限" />
+                <el-option label="初中及以下" value="初中及以下" />
+                <el-option label="高中" value="高中" />
+                <el-option label="中专/中技" value="中专/中技" />
                 <el-option label="大专" value="大专" />
                 <el-option label="本科" value="本科" />
                 <el-option label="硕士" value="硕士" />
                 <el-option label="博士" value="博士" />
+                <el-option label="学历不限" value="学历不限" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -233,7 +254,7 @@ const jobForm = reactive({
   salary: '',
   job_type: '全职',
   location: '',
-  degree_requirement: '本科',
+  degree_requirement: '学历不限',
   experience_requirement: '经验不限',
   job_category: '',
   major_requirement: '',
@@ -347,6 +368,8 @@ const showCreateDialog = () => {
   jobDialogVisible.value = true
 }
 
+const originalJobForm = reactive({})
+
 const handleEdit = (row) => {
   isEdit.value = true
   // Fill form
@@ -363,6 +386,9 @@ const handleEdit = (row) => {
       jobForm.search_keywords = []
   }
   
+  // Save original state for comparison
+  Object.assign(originalJobForm, JSON.parse(JSON.stringify(jobForm)))
+  
   jobDialogVisible.value = true
 }
 
@@ -375,7 +401,7 @@ const resetForm = () => {
   jobForm.salary = ''
   jobForm.job_type = '全职'
   jobForm.location = ''
-  jobForm.degree_requirement = '本科'
+  jobForm.degree_requirement = '学历不限'
   jobForm.experience_requirement = '经验不限'
   jobForm.job_category = ''
   jobForm.major = ''
@@ -383,6 +409,9 @@ const resetForm = () => {
   jobForm.description = ''
   jobForm.requirements = ''
   jobForm.search_keywords = []
+  
+  // Clear original form
+  Object.keys(originalJobForm).forEach(key => delete originalJobForm[key])
 }
 
 const submitJob = async () => {
@@ -394,8 +423,17 @@ const submitJob = async () => {
       try {
         const data = { ...jobForm }
         if (isEdit.value) {
+          // Check for changes
+          const hasChanges = JSON.stringify(jobForm) !== JSON.stringify(originalJobForm)
+          
+          if (!hasChanges) {
+            ElMessage.info('信息无更改')
+            submitLoading.value = false
+            return
+          }
+          
           await updateJob(data.id, data)
-          ElMessage.success('更新成功')
+          ElMessage.success('更新成功，已提交至管理员审核')
         } else {
           await createJob(data)
           ElMessage.success('发布成功')
@@ -456,8 +494,12 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
-.description-content {
+.text-block {
   white-space: pre-wrap;
   line-height: 1.6;
+  background-color: #f5f7fa;
+  padding: 15px;
+  border-radius: 4px;
+  color: #606266;
 }
 </style>

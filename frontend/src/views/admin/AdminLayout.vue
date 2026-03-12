@@ -45,13 +45,13 @@
           <el-sub-menu index="info">
             <template #title>
               <el-icon><Document /></el-icon>
-              <span>信息管理</span>
+              <span>系统管理</span>
             </template>
             <el-menu-item index="/admin/notices">系统公告</el-menu-item>
             <el-menu-item index="/admin/ads">广告信息</el-menu-item>
             <el-menu-item index="/admin/industries">行业信息</el-menu-item>
             <el-menu-item index="/admin/jobs">职位信息</el-menu-item>
-            <el-menu-item index="/admin/applications">岗位投递</el-menu-item>
+            <el-menu-item index="/admin/applications">职位投递</el-menu-item>
           </el-sub-menu>
           
           <el-sub-menu index="user">
@@ -61,7 +61,7 @@
             </template>
             <el-menu-item index="/admin/admins">管理员信息</el-menu-item>
             <el-menu-item index="/admin/companies">企业信息</el-menu-item>
-            <el-menu-item index="/admin/students">用户信息</el-menu-item>
+            <el-menu-item index="/admin/students">学生信息</el-menu-item>
           </el-sub-menu>
         </el-menu>
       </el-aside>
@@ -137,11 +137,14 @@ onMounted(() => {
   width: 32px;
   border-radius: 50%;
   background: white; /* Placeholder background */
+  flex-shrink: 0; /* Prevent logo from shrinking */
+  object-fit: cover; /* Ensure image covers the area without distortion */
 }
 
 .system-name {
   font-size: 18px;
   font-weight: bold;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 .header-center {
@@ -181,6 +184,7 @@ onMounted(() => {
 
 .admin-aside {
   background-color: #001529;
+  flex-shrink: 0; /* Prevent sidebar from shrinking */
 }
 
 .el-menu-vertical {

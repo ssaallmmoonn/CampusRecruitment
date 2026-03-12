@@ -359,6 +359,13 @@ const selectJob = (job) => {
 // Watch for selected job changes to update collection status
 watch(selectedJob, async (newJob) => {
   if (newJob && userStore.isLoggedIn) {
+    if (userStore.role === 0) {
+      // Admin: no need to check collection or application status
+      isCollected.value = false
+      isApplied.value = false
+      return
+    }
+
     try {
       const res = await checkCollectStatus({ job_id: newJob.id })
       isCollected.value = res.collected
@@ -389,6 +396,11 @@ const handleCollect = async () => {
       return
   }
 
+  if (userStore.role === 0) {
+      ElMessage.info('管理员无需收藏')
+      return
+  }
+
   if (!selectedJob.value) return
 
   try {
@@ -405,6 +417,11 @@ const openApplyDialog = async () => {
     if (!userStore.isLoggedIn) {
         ElMessage.warning('请先登录后再投递')
         router.push('/login')
+        return
+    }
+
+    if (userStore.role === 0) {
+        ElMessage.info('管理员无需投递')
         return
     }
 

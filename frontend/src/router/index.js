@@ -102,8 +102,18 @@ const routes = [
             { path: 'notices', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '系统公告' } },
             { path: 'ads', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '广告信息' } },
             { path: 'industries', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '行业信息' } },
-            { path: 'jobs', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '职位信息' } },
-            { path: 'applications', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '岗位投递' } },
+            { 
+                path: 'jobs', 
+                name: 'AdminJobs',
+                component: () => import('@/views/admin/JobManagement.vue'), 
+                meta: { title: '职位信息' } 
+            },
+            { 
+                path: 'applications', 
+                name: 'AdminApplications',
+                component: () => import('@/views/admin/ApplicationManagement.vue'), 
+                meta: { title: '岗位投递' } 
+            },
             {
                 path: 'admins',
                 name: 'AdminManagement',
@@ -116,7 +126,12 @@ const routes = [
                 component: () => import('@/views/admin/CompanyManagement.vue'),
                 meta: { title: '企业信息' }
             },
-            { path: 'students', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '用户信息' } },
+            { 
+                path: 'students', 
+                name: 'UserManagement',
+                component: () => import('@/views/admin/UserManagement.vue'), 
+                meta: { title: '用户信息' } 
+            },
         ]
     }
 ]

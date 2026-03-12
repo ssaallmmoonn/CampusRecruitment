@@ -21,6 +21,8 @@ class JobFilter(django_filters.FilterSet):
     location = CharInFilter(field_name='location', lookup_expr='in')
     job_category = django_filters.CharFilter(lookup_expr='icontains')
     major = django_filters.CharFilter(lookup_expr='icontains')
+    job_name = django_filters.CharFilter(lookup_expr='icontains')
+    company_name = django_filters.CharFilter(field_name='company__company_name', lookup_expr='icontains')
     
     class Meta:
         model = Job
@@ -66,11 +68,52 @@ class JobViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve', 'company_categories']:
             return [permissions.AllowAny()]
         elif self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [permissions.IsAuthenticated(), IsCompanyOrReadOnly(), IsOwnerOrReadOnly()]
+            # Allow Admin (role 0) OR Company Owner
+            return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated()]
 
+    def update(self, request, *args, **kwargs):
+        # Add custom permission check inside method for fine-grained control
+        user = request.user
+        job = self.get_object()
+        
+        # Admin can update everything (e.g. audit_status)
+        if user.role == 0:
+            return super().update(request, *args, **kwargs)
+        
+        # Company can only update their own jobs
+        if user.role == 2:
+            if job.company.user != user:
+                return Response({"detail": "You do not have permission to edit this job."}, status=status.HTTP_403_FORBIDDEN)
+            # Company update logic (reset audit status to pending if content changed?)
+            # For now, standard update
+            return super().update(request, *args, **kwargs)
+            
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+    def destroy(self, request, *args, **kwargs):
+        user = request.user
+        job = self.get_object()
+        
+        # Admin can delete any job
+        if user.role == 0:
+            return super().destroy(request, *args, **kwargs)
+
+        # Company can only delete their own jobs
+        if user.role == 2:
+            if job.company.user != user:
+                return Response({"detail": "You do not have permission to delete this job."}, status=status.HTTP_403_FORBIDDEN)
+            return super().destroy(request, *args, **kwargs)
+            
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
     def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action == 'create':
+            return JobCreateSerializer
+        if self.action in ['update', 'partial_update']:
+            # Admin needs to update audit_status, which is not in JobCreateSerializer
+            if self.request and self.request.user.is_authenticated and self.request.user.role == 0:
+                return JobSerializer
             return JobCreateSerializer
         return JobSerializer
 
@@ -88,14 +131,18 @@ class JobViewSet(viewsets.ModelViewSet):
             return queryset.none()
 
         # For list and retrieve actions:
-        # Public users see only approved jobs.
-        # Companies see approved jobs AND their own jobs (even if not approved).
-        if user.is_authenticated and user.role == 2:
-            try:
-                return queryset.filter(Q(audit_status=1) | Q(company=user.company_profile))
-            except:
-                return queryset.filter(audit_status=1)
+        if user.is_authenticated:
+            # Admin sees all jobs
+            if user.role == 0:
+                return queryset
+            # Companies see approved jobs AND their own jobs (even if not approved).
+            elif user.role == 2:
+                try:
+                    return queryset.filter(Q(audit_status=1) | Q(company=user.company_profile))
+                except:
+                    return queryset.filter(audit_status=1)
         
+        # Public users see only approved jobs.
         return queryset.filter(audit_status=1)
 
     def perform_create(self, serializer):

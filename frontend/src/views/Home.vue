@@ -20,6 +20,11 @@
               @select="handleMenuSelect"
             >
               <el-menu-item index="/">首页</el-menu-item>
+
+              <!-- Admin Navigation -->
+              <template v-if="userStore.role === 0">
+                <el-menu-item index="GO_BACK">管理后台</el-menu-item>
+              </template>
               
               <!-- Student / Guest Navigation -->
               <template v-if="!userStore.isLoggedIn || userStore.role === 1">
@@ -114,6 +119,11 @@ onMounted(() => {
 })
 
 const handleMenuSelect = (index) => {
+  if (index === 'GO_BACK') {
+    router.back()
+    return
+  }
+
   // Check login for protected routes
   const protectedRoutes = [
     '/recommendations', 
@@ -165,7 +175,7 @@ const handleCommand = (command) => {
   padding: 0; /* Let child views handle padding */
 }
 </style>
-<style>
+<style scoped>
 .header {
   background-color: #ffffff;
   border-bottom: 1px solid #dcdfe6;

@@ -227,6 +227,11 @@ const fetchJobDetail = async () => {
     
     // Record browse behavior only if logged in
     if (userStore.isLoggedIn) {
+      // Admin doesn't need to record behavior or check application status
+      if (userStore.role === 0) {
+        return
+      }
+
       recordBehavior({
           job: id,
           behavior_type: 1 // Browse
@@ -255,6 +260,11 @@ const handleApplyClick = async () => {
     if (!userStore.isLoggedIn) {
         ElMessage.warning('请先登录后再投递')
         router.push('/login')
+        return
+    }
+
+    if (userStore.role === 0) {
+        ElMessage.info('管理员无需投递')
         return
     }
 
@@ -319,6 +329,11 @@ const handleCollect = async () => {
   if (!userStore.isLoggedIn) {
       ElMessage.warning('请先登录后再收藏')
       router.push('/login')
+      return
+  }
+
+  if (userStore.role === 0) {
+      ElMessage.info('管理员无需收藏')
       return
   }
 

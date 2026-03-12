@@ -92,6 +92,67 @@ class AdminViewSet(viewsets.ModelViewSet):
         User.objects.filter(id__in=ids).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class StudentViewSet(viewsets.ModelViewSet):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsSystemAdmin]
+
+    def get_queryset(self):
+        queryset = Student.objects.all().order_by('user__date_joined')
+        search = self.request.query_params.get('search', None)
+        if search:
+            from django.db.models import Q
+            queryset = queryset.filter(Q(name__icontains=search) | Q(user__username__icontains=search))
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        # Admin creates student
+        username = request.data.get('username')
+        password = request.data.get('password')
+        name = request.data.get('name', '')
+        
+        # New fields
+        major = request.data.get('major', '')
+        school = request.data.get('school', '')
+        education = request.data.get('education', '')
+        graduation_year = request.data.get('graduation_year')
+        phone = request.data.get('phone', '')
+        email = request.data.get('email', '')
+        
+        if not username or not password:
+            return Response({'detail': 'Username and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if User.objects.filter(username=username).exists():
+            return Response({'detail': 'Username already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(username=username, password=password, email=email, role=1)
+        student = Student.objects.create(
+            user=user, 
+            name=name,
+            major=major,
+            school=school,
+            education=education,
+            graduation_year=graduation_year,
+            phone=phone,
+            email=email
+        )
+        
+        serializer = self.get_serializer(student)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        user = instance.user
+        user.delete()
+
+    @action(detail=False, methods=['post'])
+    def batch_delete(self, request):
+        ids = request.data.get('ids', []) 
+        if not ids:
+             return Response({'detail': 'No ids provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        User.objects.filter(id__in=ids).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer

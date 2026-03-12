@@ -45,9 +45,10 @@ class JobApplication(models.Model):
     STATUS_CHOICES = (
         (0, '未查看'),
         (1, '已查看'),
-        (2, '有意向'),
+        (2, '面试中'),
         (3, '不合适'),
         (4, '通过'),
+        (5, '不通过'),
     )
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='applications', verbose_name='学生', null=True)

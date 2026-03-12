@@ -89,6 +89,15 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
             queryset = queryset.annotate(
                 unread_count=Count('messages', filter=Q(messages__receiver=user, messages__is_read=False))
             )
+        elif user.role == 0: # Admin: see all applications
+            queryset = JobApplication.objects.all().select_related('student', 'job', 'resume', 'job__company')
+            # Admin might not need unread count annotation for chat logic, or maybe yes if we add chat view for admin later.
+            # For now, let's keep it consistent or skip it.
+            # But the serializer might expect 'unread_count' if we use the same serializer.
+            # Let's add unread_count as 0 for now to avoid errors if serializer field is required.
+            queryset = queryset.annotate(
+                unread_count=models.Value(0, output_field=models.IntegerField())
+            )
         else:
             queryset = JobApplication.objects.none()
             

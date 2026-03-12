@@ -10,7 +10,7 @@ class JobSerializer(serializers.ModelSerializer):
         model = Job
         fields = '__all__'
         read_only_fields = ('company', 'views_count', 'collections_count', 
-                            'deliveries_count', 'create_time', 'update_time', 'audit_status', 'is_applied')
+                            'deliveries_count', 'create_time', 'update_time', 'is_applied')
 
     def get_is_applied(self, obj):
         request = self.context.get('request')
@@ -38,3 +38,10 @@ class JobCreateSerializer(serializers.ModelSerializer):
 
         validated_data['company'] = user.company_profile
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # If user is company (role 2), reset audit_status to 0 (Pending) on update
+        request = self.context.get('request')
+        if request and request.user.role == 2:
+            instance.audit_status = 0
+        return super().update(instance, validated_data)
