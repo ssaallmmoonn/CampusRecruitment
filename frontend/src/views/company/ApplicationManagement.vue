@@ -47,7 +47,9 @@
         </el-table-column>
         <el-table-column label="沟通" width="100">
           <template #default="scope">
-             <el-button link type="primary" @click="openChat(scope.row)">联系用户</el-button>
+             <el-badge :value="scope.row.unread_count" :hidden="!scope.row.unread_count" class="msg-badge">
+               <el-button link type="primary" @click="openChat(scope.row)">联系用户</el-button>
+             </el-badge>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="投递状态" width="150">
@@ -256,6 +258,7 @@
       v-model="chatVisible"
       :application-id="currentApplicationId"
       :other-user="currentOtherUser"
+      @close="handleChatClose"
     />
   </div>
 </template>
@@ -411,6 +414,10 @@ const openChat = (row) => {
     }
 }
 
+const handleChatClose = () => {
+  fetchData()
+}
+
 const formatTime = (timeStr) => {
     if (!timeStr) return '-'
     const date = new Date(timeStr)
@@ -437,8 +444,8 @@ onMounted(() => {
   margin-bottom: -18px;
 }
 
-.table-card {
-  margin-bottom: 20px;
+.table-card :deep(.el-table__row) {
+    height: 45px;
 }
 
 .pagination-container {
@@ -462,6 +469,17 @@ onMounted(() => {
     gap: 8px;
     flex-wrap: nowrap;
     justify-content: flex-start;
+}
+
+.msg-badge :deep(.el-badge__content) {
+  top: 12px;
+  right: -20px;
+  z-index: 10;
+  transform: translateY(-50%);
+}
+
+.table-card :deep(.el-table__cell) {
+  overflow: visible;
 }
 
 /* Resume Preview Styles */

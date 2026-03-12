@@ -71,6 +71,7 @@
                 @change="handleFilterChange" 
                 style="width: 180px"
             >
+                <el-option label="按未读消息" value="-unread_count" />
                 <el-option label="投递时间 (新到旧)" value="-create_time" />
                 <el-option label="投递时间 (旧到新)" value="create_time" />
                 <el-option label="薪资 (高到低)" value="-salary" />
@@ -128,7 +129,9 @@
                 <el-tag :type="getStatusType(item.status)" class="status-tag" size="large">
                   {{ getStatusText(item.status) }}
                 </el-tag>
-                <el-button type="success" plain @click.stop="openChat(item)">联系企业</el-button>
+                <el-badge :value="item.unread_count" :hidden="!item.unread_count" class="msg-badge">
+                  <el-button type="success" plain @click.stop="openChat(item)">联系企业</el-button>
+                </el-badge>
                 <el-button type="danger" @click.stop="handleCancel(item)">取消投递</el-button>
                 <el-button type="primary" @click.stop="viewDetail(item.job_detail.id)">查看详情</el-button>
               </div>
@@ -143,6 +146,7 @@
       v-model="chatVisible"
       :application-id="currentApplicationId"
       :other-user="currentOtherUser"
+      @close="handleChatClose"
     />
   </div>
 </template>
@@ -169,7 +173,7 @@ const filterForm = reactive({
   search: '',
   status: null,
   location: '',
-  ordering: null
+  ordering: '-unread_count' // Default sort by unread messages
 })
 
 const fetchApplications = async () => {
@@ -183,6 +187,20 @@ const fetchApplications = async () => {
     }
     const res = await getApplications(params)
     applications.value = res.results || res
+    
+    // Check if there are any unread messages
+    // If current ordering is '-unread_count' and no unread messages, switch to '-create_time' for display
+    // BUT we don't want to change filterForm.ordering if user explicitly selected it.
+    // However, the requirement says "display as '投递时间 (新到旧)'".
+    // This implies we should change the dropdown value if it was '-unread_count'.
+    
+    if (filterForm.ordering === '-unread_count') {
+        const hasUnread = applications.value.some(app => app.unread_count > 0)
+        if (!hasUnread) {
+            filterForm.ordering = '-create_time'
+            // We don't need to refetch because backend already falls back to time sort if unread is 0
+        }
+    }
   } catch (error) {
     console.error('Fetch applications failed:', error)
     ElMessage.error('加载投递记录失败')
@@ -214,6 +232,10 @@ const openChat = (item) => {
     avatar: item.job_detail?.company?.logo || defaultCompanyLogo
   }
   chatVisible.value = true
+}
+
+const handleChatClose = () => {
+  fetchApplications()
 }
 
 const handleCancel = (item) => {
@@ -589,5 +611,11 @@ onMounted(() => {
   min-width: 80px;
   text-align: center;
   font-weight: bold;
+}
+
+.msg-badge :deep(.el-badge__content) {
+  top: 5px;
+  right:12px;
+  z-index: 10;
 }
 </style>

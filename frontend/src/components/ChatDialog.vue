@@ -53,7 +53,7 @@
 
 <script setup>
 import { ref, watch, nextTick, onBeforeUnmount, computed, onMounted } from 'vue'
-import { getMessages, sendMessage } from '@/api/recruitment'
+import { getMessages, sendMessage, markMessagesRead } from '@/api/recruitment'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 
@@ -66,12 +66,17 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'close'])
 
 const userStore = useUserStore()
 const visible = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  set: (val) => {
+    emit('update:modelValue', val)
+    if (!val) {
+        emit('close')
+    }
+  }
 })
 
 const loading = ref(false)
@@ -173,10 +178,20 @@ const stopPolling = () => {
     }
 }
 
+const markRead = async () => {
+    if (!props.applicationId) return
+    try {
+        await markMessagesRead(props.applicationId)
+    } catch (error) {
+        console.error('Mark read failed:', error)
+    }
+}
+
 watch(() => props.modelValue, (val) => {
     if (val) {
         messages.value = [] // Clear previous messages
         startPolling()
+        markRead()
     } else {
         stopPolling()
     }

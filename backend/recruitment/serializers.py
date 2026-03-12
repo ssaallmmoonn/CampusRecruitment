@@ -13,11 +13,12 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     job_detail = JobSerializer(source='job', read_only=True)
     student_detail = StudentSerializer(source='student', read_only=True)
     resume_detail = ResumeSerializer(source='resume', read_only=True)
+    unread_count = serializers.IntegerField(read_only=True)
     
     class Meta:
         model = JobApplication
         fields = ('id', 'student', 'job', 'resume', 'status', 'create_time', 'update_time', 
-                  'job_detail', 'student_detail', 'resume_detail')
+                  'job_detail', 'student_detail', 'resume_detail', 'unread_count')
         read_only_fields = ('student', 'status', 'create_time', 'update_time')
 
 class JobApplicationCreateSerializer(serializers.ModelSerializer):

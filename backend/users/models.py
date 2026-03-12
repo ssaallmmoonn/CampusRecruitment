@@ -59,6 +59,7 @@ class Company(models.Model):
     company_name = models.CharField(max_length=100, verbose_name='企业名称')
     credit_code = models.CharField(max_length=50, verbose_name='统一社会信用代码')
     audit_status = models.PositiveSmallIntegerField(choices=AUDIT_STATUS_CHOICES, default=0, verbose_name='审核状态')
+    reject_reason = models.CharField(max_length=200, blank=True, verbose_name='驳回原因')
     contact_person = models.CharField(max_length=20, blank=True, verbose_name='联系人')
     contact_phone = models.CharField(max_length=20, blank=True, verbose_name='联系电话')
     description = models.TextField(blank=True, verbose_name='企业简介')
@@ -69,6 +70,7 @@ class Company(models.Model):
     industry = models.CharField(max_length=50, blank=True, verbose_name='所属行业')
     scale = models.CharField(max_length=50, blank=True, verbose_name='人员规模')
     nature = models.CharField(max_length=50, blank=True, verbose_name='企业性质')
+    # financing_stage removed (merged/deleted as requested)
 
     def __str__(self):
         return self.company_name

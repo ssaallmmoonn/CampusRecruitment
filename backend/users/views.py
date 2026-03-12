@@ -1,10 +1,169 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from .serializers import RegisterSerializer, MyTokenObtainPairSerializer, UserSerializer, StudentSerializer, CompanySerializer, AdministratorSerializer, ChangePasswordSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Student, Company, User, Administrator
 from django.shortcuts import get_object_or_404
 import random
+
+class IsSystemAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 0
+
+class AdminViewSet(viewsets.ModelViewSet):
+    queryset = Administrator.objects.all()
+    serializer_class = AdministratorSerializer
+    permission_classes = [permissions.IsAuthenticated, IsSystemAdmin]
+
+    def get_queryset(self):
+        queryset = Administrator.objects.all().order_by('user__date_joined')
+        search = self.request.query_params.get('search', None)
+        if search:
+            from django.db.models import Q
+            queryset = queryset.filter(Q(name__icontains=search) | Q(user__username__icontains=search))
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        # Custom create logic to handle User creation + Administrator profile
+        username = request.data.get('username')
+        password = request.data.get('password')
+        name = request.data.get('name', '')
+        email = request.data.get('email', '')
+        phone = request.data.get('phone', '')
+        
+        if not username or not password:
+            return Response({'detail': 'Username and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if User.objects.filter(username=username).exists():
+            return Response({'detail': 'Username already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(username=username, password=password, email=email, role=0)
+        # Administrator profile is auto-created in get_object usually, but for list view it might not exist yet?
+        # Wait, my get_object logic in UserProfileView auto-creates.
+        # But here we are creating a new user explicitly.
+        # We should create the profile.
+        admin_profile = Administrator.objects.create(user=user, name=name, email=email, phone=phone)
+        
+        serializer = self.get_serializer(admin_profile)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        user = instance.user
+        # Prevent deleting self
+        if user.id == self.request.user.id:
+             # This should be handled before, but good to have here.
+             # DRF doesn't support returning response in perform_destroy easily.
+             # We should override destroy.
+             pass
+        user.delete() 
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.user.id == request.user.id:
+            return Response({'detail': '不能删除自己.'}, status=status.HTTP_400_BAD_REQUEST)
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def update(self, request, *args, **kwargs):
+        # Admin can update company info, including audit_status
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        
+        # Handle audit_status update explicitly if provided
+        audit_status = request.data.get('audit_status')
+        if audit_status is not None:
+            instance.audit_status = audit_status
+            
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def batch_delete(self, request):
+        ids = request.data.get('ids', []) 
+        if not ids:
+             return Response({'detail': 'No ids provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if request.user.id in ids:
+             return Response({'detail': '不能删除自己.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        User.objects.filter(id__in=ids).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    permission_classes = [permissions.IsAuthenticated, IsSystemAdmin]
+
+    def get_queryset(self):
+        queryset = Company.objects.all().order_by('user__date_joined')
+        search = self.request.query_params.get('search', None)
+        if search:
+            from django.db.models import Q
+            queryset = queryset.filter(Q(company_name__icontains=search) | Q(user__username__icontains=search))
+        
+        audit_status = self.request.query_params.get('audit_status', None)
+        if audit_status is not None:
+            queryset = queryset.filter(audit_status=audit_status)
+            
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        # Admin creates company
+        username = request.data.get('username')
+        password = request.data.get('password')
+        company_name = request.data.get('company_name', '')
+        
+        # New fields
+        credit_code = request.data.get('credit_code', '')
+        contact_person = request.data.get('contact_person', '')
+        contact_phone = request.data.get('contact_phone', '')
+        description = request.data.get('description', '')
+        address = request.data.get('address', '')
+        industry = request.data.get('industry', '')
+        scale = request.data.get('scale', '')
+        nature = request.data.get('nature', '')
+        
+        if not username or not password:
+            return Response({'detail': 'Username and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if User.objects.filter(username=username).exists():
+            return Response({'detail': 'Username already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(username=username, password=password, email='', role=2)
+        company = Company.objects.create(
+            user=user, 
+            company_name=company_name,
+            credit_code=credit_code,
+            contact_person=contact_person,
+            contact_phone=contact_phone,
+            description=description,
+            address=address,
+            industry=industry,
+            scale=scale,
+            nature=nature,
+            audit_status=1 # Default approved if created by admin
+        )
+        
+        serializer = self.get_serializer(company)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        user = instance.user
+        user.delete()
+
+    @action(detail=False, methods=['post'])
+    def batch_delete(self, request):
+        ids = request.data.get('ids', []) 
+        if not ids:
+             return Response({'detail': 'No ids provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get users associated with these company profiles
+        # ids passed are user_ids (primary key of Company model)
+        User.objects.filter(id__in=ids).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ChangePasswordView(generics.UpdateAPIView):
     """
@@ -124,18 +283,15 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
         return Response(serializer.data)
 
-class CompanyPublicView(generics.RetrieveUpdateAPIView):
+class CompanyPublicView(generics.RetrieveUpdateDestroyAPIView):
     """
     Public view for company details
     """
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
-    # Allow Any for GET, but IsAuthenticated for PUT/PATCH (and maybe check if it's the owner)
-    # But generics.RetrieveUpdateAPIView uses one permission class list.
-    # We can override get_permissions.
     
     def get_permissions(self):
-        if self.request.method in ['PUT', 'PATCH']:
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
             return [permissions.IsAuthenticated()]
         return [permissions.AllowAny()]
 
@@ -156,8 +312,8 @@ class CompanyPublicView(generics.RetrieveUpdateAPIView):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
-        # Security check: Ensure the logged-in user owns this company profile
-        if request.user.id != instance.user.id:
+        # Security check: Ensure the logged-in user owns this company profile OR is admin
+        if request.user.id != instance.user.id and request.user.role != 0:
             return Response({'detail': 'You do not have permission to edit this profile.'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
@@ -184,3 +340,17 @@ class CompanyPublicView(generics.RetrieveUpdateAPIView):
             instance._prefetched_objects_cache = {}
 
         return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Security check: Only admin can delete company profiles via this view
+        # (Companies cannot delete themselves currently, unless we want to allow it)
+        if request.user.role != 0:
+             return Response({'detail': 'You do not have permission to delete this profile.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def perform_destroy(self, instance):
+        user = instance.user
+        user.delete()

@@ -104,8 +104,18 @@ const routes = [
             { path: 'industries', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '行业信息' } },
             { path: 'jobs', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '职位信息' } },
             { path: 'applications', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '岗位投递' } },
-            { path: 'admins', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '管理员信息' } },
-            { path: 'companies', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '企业信息' } },
+            {
+                path: 'admins',
+                name: 'AdminManagement',
+                component: () => import('@/views/admin/AdminManagement.vue'),
+                meta: { title: '管理员信息' }
+            },
+            {
+                path: 'companies',
+                name: 'CompanyManagement',
+                component: () => import('@/views/admin/CompanyManagement.vue'),
+                meta: { title: '企业信息' }
+            },
             { path: 'students', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '用户信息' } },
         ]
     }

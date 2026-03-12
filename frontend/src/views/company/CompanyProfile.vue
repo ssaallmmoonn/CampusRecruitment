@@ -4,6 +4,20 @@
       <template #header>
         <div class="card-header">
           <span>企业资料设置</span>
+          <el-tag v-if="form.audit_status === 0" type="warning" style="margin-left: 10px;">审核中</el-tag>
+          <el-tag v-else-if="form.audit_status === 1" type="success" style="margin-left: 10px;">已认证</el-tag>
+          <el-popover
+            v-else-if="form.audit_status === 2"
+            placement="bottom"
+            title="驳回原因"
+            :width="300"
+            trigger="click"
+            :content="form.reject_reason || '暂无详细理由'"
+          >
+            <template #reference>
+               <el-tag type="danger" style="margin-left: 10px; cursor: pointer;">审核被驳回 (点击查看原因)</el-tag>
+            </template>
+          </el-popover>
         </div>
       </template>
 
@@ -129,7 +143,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { getCompanyDetail, updateCompanyProfile } from '@/api/company'
 import { changePassword } from '@/api/user'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 
@@ -149,7 +163,9 @@ const form = reactive({
   scale: '',
   nature: '',
   description: '',
-  logo: ''
+  logo: '',
+  audit_status: 0,
+  reject_reason: ''
 })
 
 // Function to convert file to base64 for preview and simple upload
@@ -234,6 +250,32 @@ const fetchData = async () => {
 
   try {
     const res = await getCompanyDetail(userId)
+    
+    // Check for audit status change notification
+    const lastStatus = localStorage.getItem('last_audit_status')
+    const currentStatus = res.audit_status
+    
+    // Store current status
+    localStorage.setItem('last_audit_status', currentStatus)
+    
+    if (lastStatus !== null && parseInt(lastStatus) !== currentStatus) {
+        if (currentStatus === 1) {
+            ElNotification({
+                title: '审核通过',
+                message: '您的企业资料审核已通过！',
+                type: 'success',
+                duration: 0
+            })
+        } else if (currentStatus === 2) {
+            ElNotification({
+                title: '审核驳回',
+                message: res.reject_reason ? `您的企业资料审核被驳回。原因：${res.reject_reason}` : '您的企业资料审核被驳回。',
+                type: 'error',
+                duration: 0
+            })
+        }
+    }
+
     // Fill form
     Object.keys(form).forEach(key => {
       // Handle logo specifically if it's a full URL or relative path
@@ -243,6 +285,7 @@ const fetchData = async () => {
           originalForm[key] = res[key] // Store original value
       }
     })
+    
   } catch (error) {
     console.error(error)
     ElMessage.error('获取企业信息失败')
@@ -325,7 +368,11 @@ const handleSubmit = async () => {
         const userId = userStore.user?.id
         const res = await updateCompanyProfile(userId, formData)
         
-        ElMessage.success('保存成功')
+        ElMessage.success('保存成功，提交至管理员审核')
+        
+        // Update local status to pending
+        res.audit_status = 0
+        
         // Update store if needed
         // userStore.setUserInfo({ ...userStore.userInfo, ...res })
         // Directly update state to avoid potential HMR issues with new actions

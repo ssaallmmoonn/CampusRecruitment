@@ -66,7 +66,7 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ['status']
     search_fields = ['job__job_name', 'student__name', 'student__user__username']
-    ordering_fields = ['create_time', 'update_time']
+    ordering_fields = ['create_time', 'update_time', 'unread_count']
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -75,11 +75,39 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        from django.db.models import Count, Q
+        
         if user.role == 1: # Student: see own applications
-            return JobApplication.objects.filter(student=user.student_profile)
+            queryset = JobApplication.objects.filter(student=user.student_profile)
+            # Annotate with unread messages count (where receiver is student)
+            queryset = queryset.annotate(
+                unread_count=Count('messages', filter=Q(messages__receiver=user, messages__is_read=False))
+            )
         elif user.role == 2: # Company: see applications for their jobs
-            return JobApplication.objects.filter(job__company=user.company_profile).select_related('student', 'job', 'resume')
-        return JobApplication.objects.none()
+            queryset = JobApplication.objects.filter(job__company=user.company_profile).select_related('student', 'job', 'resume')
+            # Annotate with unread messages count (where receiver is company user)
+            queryset = queryset.annotate(
+                unread_count=Count('messages', filter=Q(messages__receiver=user, messages__is_read=False))
+            )
+        else:
+            queryset = JobApplication.objects.none()
+            
+        return queryset
+
+    def filter_queryset(self, queryset):
+        # Apply standard filters first
+        for backend in list(self.filter_backends):
+            queryset = backend().filter_queryset(self.request, queryset, self)
+            
+        ordering = self.request.query_params.get('ordering')
+        if ordering == '-unread_count':
+            # Custom sorting logic:
+            # Sort by unread_count DESC, then create_time DESC (New -> Old)
+            # This satisfies: "If any unread, they come first (sorted by unread count). If none, sorted by time."
+            # Actually if unread_count is 0 for all, it falls back to create_time DESC.
+            queryset = queryset.order_by('-unread_count', '-create_time')
+            
+        return queryset
 
     def perform_create(self, serializer):
         # When creating application, also log 'delivery' behavior (type=3)
@@ -341,13 +369,31 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         # Determine receiver
         if user.role == 1: # Student sending
             if application.student.user != user:
-                raise permissions.exceptions.PermissionDenied("You can only send messages for your own applications.")
+                from rest_framework import exceptions
+                raise exceptions.PermissionDenied("You can only send messages for your own applications.")
             receiver = application.job.company.user
         elif user.role == 2: # Company sending
             if application.job.company.user != user:
-                 raise permissions.exceptions.PermissionDenied("You can only send messages for your company's jobs.")
+                 from rest_framework import exceptions
+                 raise exceptions.PermissionDenied("You can only send messages for your company's jobs.")
             receiver = application.student.user
         else:
-             raise permissions.exceptions.PermissionDenied("Invalid user role.")
+             from rest_framework import exceptions
+             raise exceptions.PermissionDenied("Invalid user role.")
 
         serializer.save(sender=user, receiver=receiver)
+
+    @action(detail=False, methods=['post'])
+    def mark_read(self, request):
+        """
+        Mark all messages in an application as read for the current user.
+        """
+        application_id = request.data.get('application_id')
+        if not application_id:
+            return Response({'error': 'application_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        # Mark messages where receiver is current user and application is given ID
+        ChatMessage.objects.filter(application=application_id, receiver=user, is_read=False).update(is_read=True)
+        
+        return Response({'status': 'ok'})

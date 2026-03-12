@@ -120,3 +120,11 @@ export function sendMessage(data) {
     data
   })
 }
+
+export function markMessagesRead(applicationId) {
+    return request({
+        url: '/recruitment/messages/mark_read/',
+        method: 'post',
+        data: { application_id: applicationId }
+    })
+}

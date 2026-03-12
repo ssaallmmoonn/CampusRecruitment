@@ -81,13 +81,24 @@ class CompanySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ('id', 'user', 'username', 'email', 'company_name', 'credit_code', 'audit_status', 
+        fields = ('id', 'user', 'username', 'email', 'company_name', 'credit_code', 'audit_status', 'reject_reason',
                   'contact_person', 'contact_phone', 'description', 'address',
                   'logo', 'industry', 'scale', 'nature')
-        read_only_fields = ('user', 'audit_status')
+        read_only_fields = ('user', 'username', 'email') # Make username and email read-only here
 
     def update(self, instance, validated_data):
-        # Handle nested user data if needed (though username/email usually not editable here)
+        # If audit_status is being updated, it means admin is approving/rejecting
+        # Or if company is updating profile, we should reset audit_status to 0 (Pending)
+        
+        request = self.context.get('request')
+        if request and request.user:
+            # If user is company (role 2) and updating their own profile
+            if request.user.role == 2:
+                # Reset audit status to 0 (Pending)
+                validated_data['audit_status'] = 0
+                # Clear reject reason
+                validated_data['reject_reason'] = ''
+
         return super().update(instance, validated_data)
 
 class RegisterSerializer(serializers.ModelSerializer):
