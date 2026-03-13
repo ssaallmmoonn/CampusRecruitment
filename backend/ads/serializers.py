@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Banner, Brand
+from .models import Banner, Brand, Notice
 from users.serializers import CompanySerializer
 
 class BannerSerializer(serializers.ModelSerializer):
@@ -12,4 +12,9 @@ class BrandSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Brand
+        fields = '__all__'
+
+class NoticeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notice
         fields = '__all__'

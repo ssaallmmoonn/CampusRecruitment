@@ -105,7 +105,12 @@ const routes = [
                 meta: { title: '个人资料' }
             },
             // Placeholders for other routes
-            { path: 'notices', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '系统公告' } },
+            {
+                path: 'notices',
+                name: 'AdminNotices',
+                component: () => import('@/views/admin/notices/NoticeManagement.vue'),
+                meta: { title: '系统公告' }
+            },
             { 
                 path: 'ads/banner', 
                 component: () => import('@/views/admin/ads/BannerManagement.vue'), 

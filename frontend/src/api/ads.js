@@ -81,3 +81,38 @@ export function deleteBrand(id) {
     method: 'delete'
   })
 }
+
+// 获取公告列表
+export function getNotices(params) {
+  return request({
+    url: '/ads/notices/',
+    method: 'get',
+    params
+  })
+}
+
+// 创建公告
+export function createNotice(data) {
+  return request({
+    url: '/ads/notices/',
+    method: 'post',
+    data
+  })
+}
+
+// 更新公告
+export function updateNotice(id, data) {
+  return request({
+    url: `/ads/notices/${id}/`,
+    method: 'patch',
+    data
+  })
+}
+
+// 删除公告
+export function deleteNotice(id) {
+  return request({
+    url: `/ads/notices/${id}/`,
+    method: 'delete'
+  })
+}

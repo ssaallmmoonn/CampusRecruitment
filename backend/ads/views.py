@@ -1,41 +1,24 @@
 from rest_framework import viewsets, permissions
-from .models import Banner, Brand
-from .serializers import BannerSerializer, BrandSerializer
+from .models import Banner, Brand, Notice
+from .serializers import BannerSerializer, BrandSerializer, NoticeSerializer
 
 class BannerViewSet(viewsets.ModelViewSet):
     queryset = Banner.objects.all()
     serializer_class = BannerSerializer
-    
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
-
-    def get_queryset(self):
-        # Admin sees all, public sees only active
-        if self.action == 'list':
-            user = self.request.user
-            # Check if user is admin (role 0)
-            if user.is_authenticated and hasattr(user, 'role') and user.role == 0:
-                return Banner.objects.all()
-            return Banner.objects.filter(is_active=True)
-        return super().get_queryset()
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filterset_fields = ['is_active']
+    search_fields = ['title']
 
 class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
-    
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filterset_fields = ['is_active', 'company']
+    search_fields = ['name']
 
-    def get_queryset(self):
-        # Admin sees all, public sees only active
-        if self.action == 'list':
-            user = self.request.user
-            # Check if user is admin (role 0)
-            if user.is_authenticated and hasattr(user, 'role') and user.role == 0:
-                return Brand.objects.all()
-            return Brand.objects.filter(is_active=True)
-        return super().get_queryset()
+class NoticeViewSet(viewsets.ModelViewSet):
+    queryset = Notice.objects.all()
+    serializer_class = NoticeSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filterset_fields = ['is_active']
+    search_fields = ['title', 'content']
