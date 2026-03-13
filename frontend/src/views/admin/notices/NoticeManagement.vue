@@ -50,7 +50,7 @@
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          layout="prev, pager, next"
+          layout="total, sizes, prev, pager, next, jumper"
           :total="total"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
@@ -327,7 +327,7 @@ onMounted(() => {
 .pagination-container {
   margin-top: 20px;
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 /* 按钮图标样式调整 */
