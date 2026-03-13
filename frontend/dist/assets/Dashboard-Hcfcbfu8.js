@@ -1,0 +1,1 @@
+import{_ as r}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{a,g as t,w as s,r as n,d as c}from"./index-D2SrBNIp.js";const d={};function l(_,e){const o=n("el-card");return a(),t(o,null,{default:s(()=>[...e[0]||(e[0]=[c("div",null,"企业端 Dashboard（待开发）",-1)])]),_:1})}const p=r(d,[["render",l]]);export{p as default};

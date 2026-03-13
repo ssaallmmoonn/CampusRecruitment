@@ -8,7 +8,7 @@
             <span class="logo-text">三之文鱼招聘系统管理后台</span>
           </div>
           <el-breadcrumb separator="/" class="breadcrumb">
-            <el-breadcrumb-item :to="{ path: '/company/jobs' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item :to="{ path: '/company/dashboard' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item>{{ currentRouteName }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
@@ -40,6 +40,10 @@
             active-text-color="#fff"
             router
           >
+            <el-menu-item index="/company/dashboard">
+              <el-icon><Odometer /></el-icon>
+              <span>系统首页</span>
+            </el-menu-item>
             <el-sub-menu index="1">
               <template #title>
                 <el-icon><User /></el-icon>
@@ -64,7 +68,7 @@
 import { computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter, useRoute } from 'vue-router'
-import { ArrowDown, User } from '@element-plus/icons-vue'
+import { ArrowDown, User, Odometer } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -81,6 +85,7 @@ const activeMenu = computed(() => {
 })
 
 const currentRouteName = computed(() => {
+  if (route.path.includes('/dashboard')) return '首页'
   if (route.path.includes('/jobs')) return '职位信息'
   if (route.path.includes('/applications')) return '职位投递'
   if (route.path.includes('/profile')) return '企业资料'

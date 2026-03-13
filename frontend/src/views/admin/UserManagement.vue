@@ -32,7 +32,7 @@
         <el-table-column prop="name" label="姓名" min-width="100" />
         <el-table-column label="头像" width="80">
           <template #default="scope">
-            <el-avatar :size="40" :src="scope.row.avatar || defaultAvatar" />
+            <el-avatar :size="40" :src="scope.row.avatar || defaultAvatar" shape="square"/>
           </template>
         </el-table-column>
         <el-table-column prop="school" label="学校" min-width="150" show-overflow-tooltip />

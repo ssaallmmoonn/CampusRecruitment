@@ -48,7 +48,12 @@
               <span>系统管理</span>
             </template>
             <el-menu-item index="/admin/notices">系统公告</el-menu-item>
-            <el-menu-item index="/admin/ads">广告信息</el-menu-item>
+            <el-sub-menu index="ads">
+              <template #title>广告信息</template>
+              <el-menu-item index="/admin/ads/banner">轮播图区</el-menu-item>
+              <el-menu-item index="/admin/ads/brand">品牌专区</el-menu-item>
+            </el-sub-menu>
+            <el-menu-item index="/admin/majors">专业信息</el-menu-item>
             <el-menu-item index="/admin/industries">行业信息</el-menu-item>
             <el-menu-item index="/admin/jobs">职位信息</el-menu-item>
             <el-menu-item index="/admin/applications">职位投递</el-menu-item>

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'jobs.apps.JobsConfig',
     'recruitment.apps.RecruitmentConfig',  # Handles resumes, applications
     'recommendation.apps.RecommendationConfig', # Recommendation algorithm
+    'ads.apps.AdsConfig',
 ]
 
 MIDDLEWARE = [

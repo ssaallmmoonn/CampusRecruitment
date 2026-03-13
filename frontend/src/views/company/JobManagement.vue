@@ -171,12 +171,26 @@
         <el-row :gutter="20">
           <el-col :span="8">
              <el-form-item label="职位分类" prop="job_category">
-              <el-input v-model="jobForm.job_category" placeholder="例如: Java开发" />
+              <el-cascader
+                v-model="jobForm.job_category"
+                :options="jobCategoryOptions"
+                :props="cascaderProps"
+                clearable
+                filterable
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="8">
              <el-form-item label="专业分类" prop="major">
-              <el-input v-model="jobForm.major" placeholder="例如: 计算机科学与技术" />
+              <el-cascader
+                v-model="jobForm.major"
+                :options="majorOptions"
+                :props="cascaderProps"
+                clearable
+                filterable
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -223,7 +237,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { getJobs, createJob, updateJob, deleteJob } from '@/api/jobs'
+import { getJobs, createJob, updateJob, deleteJob, getJobCategoryTree, getMajorCategoryTree } from '@/api/jobs'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Delete } from '@element-plus/icons-vue'
 
@@ -248,6 +262,10 @@ const isEdit = ref(false)
 const submitLoading = ref(false)
 const jobFormRef = ref(null)
 
+const jobCategoryOptions = ref([])
+const majorOptions = ref([])
+const cascaderProps = { emitPath: false }
+
 const jobForm = reactive({
   id: null,
   job_name: '',
@@ -257,6 +275,7 @@ const jobForm = reactive({
   degree_requirement: '学历不限',
   experience_requirement: '经验不限',
   job_category: '',
+  major: '',
   major_requirement: '',
   description: '',
   requirements: '',
@@ -267,7 +286,43 @@ const jobRules = {
   job_name: [{ required: true, message: '请输入职位名称', trigger: 'blur' }],
   salary: [{ required: true, message: '请输入薪资待遇', trigger: 'blur' }],
   location: [{ required: true, message: '请输入工作地点', trigger: 'blur' }],
+  job_category: [{ required: true, message: '请选择职位分类', trigger: 'change' }],
+  major: [{ required: true, message: '请选择专业分类', trigger: 'change' }],
   description: [{ required: true, message: '请输入职位描述', trigger: 'blur' }]
+}
+
+const findLeafValueByLabel = (label, options) => {
+  if (!label) return ''
+  const stack = Array.isArray(options) ? [...options] : []
+  while (stack.length) {
+    const node = stack.shift()
+    if (!node) continue
+    const children = node.children || []
+    if (!children.length && node.label === label) return node.value
+    if (children.length) stack.unshift(...children)
+  }
+  return ''
+}
+
+const normalizeCategoryValue = (value, options) => {
+  if (!value) return ''
+  if (typeof value === 'string' && value.includes('/')) return value
+  const mapped = findLeafValueByLabel(value, options)
+  return mapped || value
+}
+
+const loadCategoryOptions = async () => {
+  try {
+    if (!jobCategoryOptions.value.length) {
+      jobCategoryOptions.value = await getJobCategoryTree()
+    }
+    if (!majorOptions.value.length) {
+      majorOptions.value = await getMajorCategoryTree()
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('获取分类数据失败')
+  }
 }
 
 const fetchData = async () => {
@@ -365,13 +420,15 @@ const showDescription = (row) => {
 const showCreateDialog = () => {
   isEdit.value = false
   resetForm()
+  loadCategoryOptions()
   jobDialogVisible.value = true
 }
 
 const originalJobForm = reactive({})
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   isEdit.value = true
+  await loadCategoryOptions()
   // Fill form
   Object.keys(jobForm).forEach(key => {
     if (key in row) {
@@ -388,6 +445,9 @@ const handleEdit = (row) => {
   
   // Save original state for comparison
   Object.assign(originalJobForm, JSON.parse(JSON.stringify(jobForm)))
+
+  jobForm.job_category = normalizeCategoryValue(jobForm.job_category, jobCategoryOptions.value)
+  jobForm.major = normalizeCategoryValue(jobForm.major, majorOptions.value)
   
   jobDialogVisible.value = true
 }
@@ -461,6 +521,7 @@ const handleCurrentChange = (val) => {
 }
 
 onMounted(() => {
+  loadCategoryOptions()
   fetchData()
 })
 </script>

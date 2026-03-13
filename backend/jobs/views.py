@@ -5,8 +5,8 @@ from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from django.db.models import Q
-from .models import Job
-from .serializers import JobSerializer, JobCreateSerializer
+from .models import Job, JobCategory, MajorCategory
+from .serializers import JobSerializer, JobCreateSerializer, JobCategoryTreeSerializer, MajorCategoryTreeSerializer, JobCategoryAdminSerializer, JobCategoryAdminTreeSerializer, MajorCategoryAdminSerializer, MajorCategoryAdminTreeSerializer
 from users.models import Company, User
 from users.serializers import CompanySerializer
 import random
@@ -44,6 +44,10 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return obj.company.user == request.user
+
+class IsAdminRole(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 0
 
 class JobPagination(PageNumberPagination):
     page_size = 20
@@ -192,6 +196,96 @@ class JobViewSet(viewsets.ModelViewSet):
         locations = [l for l in locations if l]
         
         return Response(locations)
+
+class JobCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = JobCategory.objects.all()
+    serializer_class = JobCategoryTreeSerializer
+    permission_classes = [permissions.AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        return JobCategory.objects.filter(parent__isnull=True).order_by('name')
+
+class MajorCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = MajorCategory.objects.all()
+    serializer_class = MajorCategoryTreeSerializer
+    permission_classes = [permissions.AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        return MajorCategory.objects.filter(parent__isnull=True).order_by('name')
+
+class JobCategoryAdminViewSet(viewsets.ModelViewSet):
+    queryset = JobCategory.objects.all()
+    serializer_class = JobCategoryAdminSerializer
+    permission_classes = [IsAdminRole]
+    pagination_class = None
+
+    def list(self, request, *args, **kwargs):
+        term = (request.query_params.get('search') or '').strip()
+        if not term:
+            roots = JobCategory.objects.filter(parent__isnull=True).order_by('name')
+            data = JobCategoryAdminTreeSerializer(roots, many=True).data
+            return Response(data)
+
+        matches = JobCategory.objects.filter(name__icontains=term).only('id', 'parent_id')
+        include_ids = set(matches.values_list('id', flat=True))
+
+        parent_ids = set(matches.values_list('parent_id', flat=True))
+        while parent_ids:
+            parents = JobCategory.objects.filter(id__in=parent_ids).only('id', 'parent_id')
+            new_ids = set(parents.values_list('id', flat=True))
+            include_ids |= new_ids
+            parent_ids = set(parents.values_list('parent_id', flat=True)) - {None} - include_ids
+
+        nodes = JobCategory.objects.filter(id__in=include_ids).select_related('parent').order_by('name')
+        by_id = {n.id: {'id': n.id, 'name': n.name, 'parent': n.parent_id, 'level': n.level, 'path': n.path, 'children': []} for n in nodes}
+
+        roots = []
+        for n in nodes:
+            item = by_id[n.id]
+            if n.parent_id and n.parent_id in by_id:
+                by_id[n.parent_id]['children'].append(item)
+            else:
+                roots.append(item)
+
+        return Response(roots)
+
+class MajorCategoryAdminViewSet(viewsets.ModelViewSet):
+    queryset = MajorCategory.objects.all()
+    serializer_class = MajorCategoryAdminSerializer
+    permission_classes = [IsAdminRole]
+    pagination_class = None
+
+    def list(self, request, *args, **kwargs):
+        term = (request.query_params.get('search') or '').strip()
+        if not term:
+            roots = MajorCategory.objects.filter(parent__isnull=True).order_by('name')
+            data = MajorCategoryAdminTreeSerializer(roots, many=True).data
+            return Response(data)
+
+        matches = MajorCategory.objects.filter(name__icontains=term).only('id', 'parent_id')
+        include_ids = set(matches.values_list('id', flat=True))
+
+        parent_ids = set(matches.values_list('parent_id', flat=True))
+        while parent_ids:
+            parents = MajorCategory.objects.filter(id__in=parent_ids).only('id', 'parent_id')
+            new_ids = set(parents.values_list('id', flat=True))
+            include_ids |= new_ids
+            parent_ids = set(parents.values_list('parent_id', flat=True)) - {None} - include_ids
+
+        nodes = MajorCategory.objects.filter(id__in=include_ids).select_related('parent').order_by('name')
+        by_id = {n.id: {'id': n.id, 'name': n.name, 'parent': n.parent_id, 'level': n.level, 'path': n.path, 'children': []} for n in nodes}
+
+        roots = []
+        for n in nodes:
+            item = by_id[n.id]
+            if n.parent_id and n.parent_id in by_id:
+                by_id[n.parent_id]['children'].append(item)
+            else:
+                roots.append(item)
+
+        return Response(roots)
 
 class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [permissions.AllowAny]

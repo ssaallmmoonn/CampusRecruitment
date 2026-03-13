@@ -145,7 +145,7 @@ const handleLogin = async () => {
     // Redirect based on role
     // res contains { username, role, id, access, refresh }
     if (res.role === 2) {
-      router.push('/company/jobs')
+      router.push('/company/dashboard')
     } else if (res.role === 0) { // Admin
       router.push('/admin/dashboard')
     } else {

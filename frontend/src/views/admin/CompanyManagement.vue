@@ -32,9 +32,9 @@
         style="width: 100%"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="username" label="企业账号" min-width="120" />
-        <el-table-column prop="company_name" label="企业名称" min-width="150" />
+        <el-table-column type="selection" width="40" />
+        <el-table-column prop="username" label="企业账号" min-width="180" />
+        <el-table-column prop="company_name" label="企业名称" min-width="200" />
         <el-table-column label="企业Logo" width="100">
           <template #default="scope">
             <el-avatar :size="40" :src="scope.row.logo || defaultLogo" shape="square" />

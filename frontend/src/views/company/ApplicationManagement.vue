@@ -45,6 +45,21 @@
                 {{ formatTime(scope.row.create_time) }}
             </template>
         </el-table-column>
+        <el-table-column label="浏览量" width="100" align="center">
+            <template #default="scope">
+                {{ scope.row.job_detail?.views_count || 0 }}
+            </template>
+        </el-table-column>
+        <el-table-column label="收藏量" width="100" align="center">
+            <template #default="scope">
+                {{ scope.row.job_detail?.collections_count || 0 }}
+            </template>
+        </el-table-column>
+        <el-table-column label="投递量" width="100" align="center">
+            <template #default="scope">
+                {{ scope.row.job_detail?.deliveries_count || 0 }}
+            </template>
+        </el-table-column>
         <el-table-column label="沟通" width="100">
           <template #default="scope">
              <el-badge :value="scope.row.unread_count" :hidden="!scope.row.unread_count" class="msg-badge">

@@ -62,8 +62,14 @@ const routes = [
     {
         path: '/company',
         component: () => import('@/views/company/CompanyLayout.vue'),
+        redirect: '/company/dashboard',
         meta: { requiresAuth: true, role: 2 },
         children: [
+            {
+                path: 'dashboard',
+                name: 'CompanyDashboard',
+                component: () => import('@/views/company/Dashboard.vue')
+            },
             {
                 path: 'jobs',
                 name: 'JobManagement',
@@ -100,8 +106,18 @@ const routes = [
             },
             // Placeholders for other routes
             { path: 'notices', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '系统公告' } },
-            { path: 'ads', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '广告信息' } },
-            { path: 'industries', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '行业信息' } },
+            { 
+                path: 'ads/banner', 
+                component: () => import('@/views/admin/ads/BannerManagement.vue'), 
+                meta: { title: '轮播图区' } 
+            },
+            { 
+                path: 'ads/brand', 
+                component: () => import('@/views/admin/ads/BrandManagement.vue'), 
+                meta: { title: '品牌专区' } 
+            },
+            { path: 'majors', component: () => import('@/views/admin/MajorManagement.vue'), meta: { title: '专业信息' } },
+            { path: 'industries', component: () => import('@/views/admin/IndustryManagement.vue'), meta: { title: '行业信息' } },
             { 
                 path: 'jobs', 
                 name: 'AdminJobs',

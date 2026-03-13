@@ -22,7 +22,9 @@ service.interceptors.request.use(
       config.url.includes('users/login/') || 
       config.url.includes('users/register/') ||
       config.url.includes('jobs/dashboard/brand-zone/') ||
-      config.url.includes('jobs/dashboard/selected-jobs/')
+      config.url.includes('jobs/dashboard/selected-jobs/') ||
+      config.url.includes('jobs/categories/') ||
+      config.url.includes('jobs/majors/')
     ) {
       delete config.headers['Authorization']
       return config

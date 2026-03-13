@@ -1,6 +1,178 @@
 from rest_framework import serializers
-from .models import Job
+from .models import Job, JobCategory, MajorCategory
 from users.serializers import CompanySerializer
+
+class JobCategoryTreeSerializer(serializers.ModelSerializer):
+    label = serializers.CharField(source='name', read_only=True)
+    value = serializers.CharField(source='path', read_only=True)
+    children = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JobCategory
+        fields = ('label', 'value', 'children')
+
+    def get_children(self, obj):
+        qs = obj.children.all().order_by('name')
+        return JobCategoryTreeSerializer(qs, many=True).data
+
+class MajorCategoryTreeSerializer(serializers.ModelSerializer):
+    label = serializers.CharField(source='name', read_only=True)
+    value = serializers.CharField(source='path', read_only=True)
+    children = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MajorCategory
+        fields = ('label', 'value', 'children')
+
+    def get_children(self, obj):
+        qs = obj.children.all().order_by('name')
+        return MajorCategoryTreeSerializer(qs, many=True).data
+
+class JobCategoryAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobCategory
+        fields = ('id', 'name', 'parent', 'level', 'path')
+        read_only_fields = ('level', 'path')
+
+    def validate(self, attrs):
+        parent = attrs.get('parent')
+        if self.instance is not None and 'parent' not in attrs:
+            parent = self.instance.parent
+        level = 1
+        if parent is not None:
+            level = (parent.level or 1) + 1
+        if level > 3:
+            raise serializers.ValidationError({'parent': '仅支持三级分类'})
+        return attrs
+
+    def create(self, validated_data):
+        parent = validated_data.get('parent')
+        if parent is None:
+            level = 1
+            path = validated_data['name']
+        else:
+            level = (parent.level or 1) + 1
+            path = f'{parent.path}/{validated_data["name"]}'
+
+        instance = JobCategory.objects.create(
+            name=validated_data['name'],
+            parent=parent,
+            level=level,
+            path=path[:255],
+        )
+        return instance
+
+    def update(self, instance, validated_data):
+        old_path = instance.path
+        instance.name = validated_data.get('name', instance.name)
+        if 'parent' in validated_data:
+            instance.parent = validated_data['parent']
+
+        parent = instance.parent
+        if parent is None:
+            instance.level = 1
+            instance.path = instance.name
+        else:
+            instance.level = (parent.level or 1) + 1
+            if instance.level > 3:
+                raise serializers.ValidationError({'parent': '仅支持三级分类'})
+            instance.path = f'{parent.path}/{instance.name}'
+
+        instance.path = instance.path[:255]
+        instance.save()
+
+        new_path = instance.path
+        if old_path != new_path:
+            descendants = JobCategory.objects.filter(path__startswith=old_path + '/')
+            for node in descendants:
+                node.path = (new_path + node.path[len(old_path):])[:255]
+                node.save(update_fields=['path'])
+
+        return instance
+
+class JobCategoryAdminTreeSerializer(serializers.ModelSerializer):
+    children = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JobCategory
+        fields = ('id', 'name', 'parent', 'level', 'path', 'children')
+
+    def get_children(self, obj):
+        qs = obj.children.all().order_by('name')
+        return JobCategoryAdminTreeSerializer(qs, many=True).data
+
+class MajorCategoryAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MajorCategory
+        fields = ('id', 'name', 'parent', 'level', 'path')
+        read_only_fields = ('level', 'path')
+
+    def validate(self, attrs):
+        parent = attrs.get('parent')
+        if self.instance is not None and 'parent' not in attrs:
+            parent = self.instance.parent
+        level = 1
+        if parent is not None:
+            level = (parent.level or 1) + 1
+        if level > 3:
+            raise serializers.ValidationError({'parent': '仅支持三级分类'})
+        return attrs
+
+    def create(self, validated_data):
+        parent = validated_data.get('parent')
+        if parent is None:
+            level = 1
+            path = validated_data['name']
+        else:
+            level = (parent.level or 1) + 1
+            path = f'{parent.path}/{validated_data["name"]}'
+
+        instance = MajorCategory.objects.create(
+            name=validated_data['name'],
+            parent=parent,
+            level=level,
+            path=path[:255],
+        )
+        return instance
+
+    def update(self, instance, validated_data):
+        old_path = instance.path
+        instance.name = validated_data.get('name', instance.name)
+        if 'parent' in validated_data:
+            instance.parent = validated_data['parent']
+
+        parent = instance.parent
+        if parent is None:
+            instance.level = 1
+            instance.path = instance.name
+        else:
+            instance.level = (parent.level or 1) + 1
+            if instance.level > 3:
+                raise serializers.ValidationError({'parent': '仅支持三级分类'})
+            instance.path = f'{parent.path}/{instance.name}'
+
+        instance.path = instance.path[:255]
+        instance.save()
+
+        new_path = instance.path
+        if old_path != new_path:
+            descendants = MajorCategory.objects.filter(path__startswith=old_path + '/')
+            for node in descendants:
+                node.path = (new_path + node.path[len(old_path):])[:255]
+                node.save(update_fields=['path'])
+
+        return instance
+
+class MajorCategoryAdminTreeSerializer(serializers.ModelSerializer):
+    children = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MajorCategory
+        fields = ('id', 'name', 'parent', 'level', 'path', 'children')
+
+    def get_children(self, obj):
+        qs = obj.children.all().order_by('name')
+        return MajorCategoryAdminTreeSerializer(qs, many=True).data
 
 class JobSerializer(serializers.ModelSerializer):
     company = CompanySerializer(read_only=True)
@@ -19,6 +191,28 @@ class JobSerializer(serializers.ModelSerializer):
             from recruitment.models import JobApplication
             return JobApplication.objects.filter(student=request.user.student_profile, job=obj).exists()
         return False
+
+    def validate_job_category(self, value):
+        if not value:
+            raise serializers.ValidationError('请选择职位分类')
+        if '/' in value:
+            ok = JobCategory.objects.filter(level=3, path=value).exists()
+        else:
+            ok = JobCategory.objects.filter(level=3, name=value).exists()
+        if not ok:
+            raise serializers.ValidationError('职位分类不合法')
+        return value
+
+    def validate_major(self, value):
+        if not value:
+            raise serializers.ValidationError('请选择专业分类')
+        if '/' in value:
+            ok = MajorCategory.objects.filter(level=3, path=value).exists()
+        else:
+            ok = MajorCategory.objects.filter(level=3, name=value).exists()
+        if not ok:
+            raise serializers.ValidationError('专业分类不合法')
+        return value
 
 class JobCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,3 +239,25 @@ class JobCreateSerializer(serializers.ModelSerializer):
         if request and request.user.role == 2:
             instance.audit_status = 0
         return super().update(instance, validated_data)
+
+    def validate_job_category(self, value):
+        if not value:
+            raise serializers.ValidationError('请选择职位分类')
+        if '/' in value:
+            ok = JobCategory.objects.filter(level=3, path=value).exists()
+        else:
+            ok = JobCategory.objects.filter(level=3, name=value).exists()
+        if not ok:
+            raise serializers.ValidationError('职位分类不合法')
+        return value
+
+    def validate_major(self, value):
+        if not value:
+            raise serializers.ValidationError('请选择专业分类')
+        if '/' in value:
+            ok = MajorCategory.objects.filter(level=3, path=value).exists()
+        else:
+            ok = MajorCategory.objects.filter(level=3, name=value).exists()
+        if not ok:
+            raise serializers.ValidationError('专业分类不合法')
+        return value

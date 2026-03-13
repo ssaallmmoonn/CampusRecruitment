@@ -36,7 +36,7 @@
         </el-table-column>
         <el-table-column label="头像" width="120">
           <template #default="scope">
-            <el-avatar :size="40" :src="scope.row.avatar || defaultAvatar" />
+            <el-avatar :size="40" :src="scope.row.avatar || defaultAvatar" shape="square"/>
           </template>
         </el-table-column>
         <el-table-column prop="phone" label="电话" min-width="120">

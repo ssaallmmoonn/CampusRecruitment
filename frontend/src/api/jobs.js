@@ -57,3 +57,17 @@ export function getCompanyLocations(companyId, jobCategory) {
     params
   })
 }
+
+export function getJobCategoryTree() {
+  return request({
+    url: '/jobs/categories/',
+    method: 'get'
+  })
+}
+
+export function getMajorCategoryTree() {
+  return request({
+    url: '/jobs/majors/',
+    method: 'get'
+  })
+}

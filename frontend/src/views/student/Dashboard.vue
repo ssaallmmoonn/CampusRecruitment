@@ -126,11 +126,11 @@
       <div class="banner-carousel">
         <el-carousel trigger="click" height="440px">
           <el-carousel-item v-for="item in carouselItems" :key="item.id">
-            <div class="carousel-item-content" :style="{ backgroundImage: `url(${item.image})` }">
-              <div class="carousel-overlay">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-              </div>
+            <div 
+              class="carousel-item-content" 
+              :style="{ backgroundImage: `url(${item.image})` }"
+              @click="handleBannerClick(item)"
+            >
               <!-- Ad Badge -->
               <div class="ad-badge">广告</div>
             </div>
@@ -147,7 +147,12 @@
         <span class="section-subtitle">行业领导者，邀你共创辉煌</span>
       </div>
       <div class="brand-grid">
-        <div v-for="brand in brandCards" :key="brand.id" class="brand-card">
+        <div 
+          v-for="brand in brandCards" 
+          :key="brand.id" 
+          class="brand-card"
+          @click="handleBrandClick(brand)"
+        >
           <div class="brand-image-wrapper">
             <img :src="brand.image" :alt="brand.name" class="brand-image" />
             <div class="ad-badge">广告</div>
@@ -215,8 +220,7 @@ import {
   Monitor, DataLine, FirstAidKit, Apple, Management, Notebook, ScaleToOriginal,
   Money, Connection, Tools, Brush, Headset, Trophy
 } from '@element-plus/icons-vue'
-import majorJson from '@/assets/major.json'
-import jobJson from '@/assets/jobs.json'
+import { getBanners, getBrands } from '@/api/ads'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -224,6 +228,7 @@ const searchQuery = ref('')
 const activeTab = ref('major')
 const activeCategory = ref(null)
 const activeJobCategory = ref(null)
+const carouselItems = ref([])
 
 const majorIcons = {
   '工学': 'Monitor',
@@ -244,6 +249,9 @@ const jobIcons = {
   '运营/客服': 'Headset',
   '产品/项目/高级管理': 'Trophy'
 }
+
+import majorJson from '@/assets/major.json'
+import jobJson from '@/assets/jobs.json'
 
 const transformMajors = (data) => {
   if (!data || !data['专业分类']) return []
@@ -279,40 +287,41 @@ const getSubCategoryPreview = (category) => {
   return category.children.map(c => c.name).slice(0, 2).join('/')
 }
 
-const carouselItems = [
-  { 
-    id: 1, 
-    title: '开启你的职业生涯', 
-    subtitle: '海量名企校招职位等你来投', 
-    image: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-  },
-  { 
-    id: 2, 
-    title: '寻找志同道合的伙伴', 
-    subtitle: '加入优秀团队，共创未来', 
-    image: 'https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-  },
-  { 
-    id: 3, 
-    title: '技术改变世界', 
-    subtitle: '在科技前沿探索无限可能', 
-    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-  }
-]
-
 const brandCards = ref([])
 const selectedJobs = ref([])
 
+const fetchBannersData = async () => {
+  try {
+    const res = await getBanners()
+    carouselItems.value = res.results || res
+  } catch (error) {
+    console.error('Failed to fetch banners:', error)
+  }
+}
+
+const handleBannerClick = (item) => {
+  if (item.link_url) {
+    window.open(item.link_url, '_blank')
+  }
+}
+
 const fetchBrandZone = async () => {
   try {
-    const res = await request.get('/jobs/dashboard/brand-zone/')
-    brandCards.value = res.map(item => ({
-      id: item.user,
-      name: item.company_name,
-      image: item.logo
+    const res = await getBrands()
+    brandCards.value = (res.results || res).map(item => ({
+      id: item.id,
+      name: item.name,
+      image: item.logo,
+      companyId: item.company
     }))
   } catch (error) {
     console.error('Failed to fetch brand zone:', error)
+  }
+}
+
+const handleBrandClick = (brand) => {
+  if (brand.companyId) {
+    router.push(`/company/${brand.companyId}`)
   }
 }
 
@@ -342,6 +351,7 @@ const fetchSelectedJobs = async () => {
 onMounted(() => {
   fetchBrandZone()
   fetchSelectedJobs()
+  fetchBannersData()
 })
 
 const handleSearch = () => {
@@ -448,10 +458,10 @@ const cancelClear = () => {
 .hero-section {
   position: relative;
   background: linear-gradient(135deg, #f6f8fd 0%, #f0f4ff 100%);
-  padding: 80px 0 60px;
+  padding: 10px 0 20px;
   text-align: center;
   overflow: hidden;
-  margin-bottom: 40px;
+  margin-bottom: 10px;
 }
 
 .hero-bg-decoration {
@@ -805,6 +815,7 @@ const cancelClear = () => {
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0,0,0,0.05);
   position: relative;
+  cursor: pointer;
 }
 
 .el-carousel {

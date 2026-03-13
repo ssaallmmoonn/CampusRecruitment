@@ -51,3 +51,47 @@ class Job(models.Model):
     class Meta:
         verbose_name = '职位'
         verbose_name_plural = verbose_name
+
+class JobCategory(models.Model):
+    name = models.CharField(max_length=100, verbose_name='名称')
+    parent = models.ForeignKey('self', null=True, blank=True, related_name='children', on_delete=models.CASCADE, verbose_name='父级')
+    level = models.PositiveSmallIntegerField(verbose_name='层级')
+    path = models.CharField(max_length=255, unique=True, verbose_name='路径')
+
+    def save(self, *args, **kwargs):
+        if not self.path:
+            if self.parent_id:
+                self.path = f'{self.parent.path}/{self.name}'
+            else:
+                self.path = self.name
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = '职位分类'
+        verbose_name_plural = verbose_name
+        unique_together = ('parent', 'name')
+
+    def __str__(self):
+        return self.path
+
+class MajorCategory(models.Model):
+    name = models.CharField(max_length=100, verbose_name='名称')
+    parent = models.ForeignKey('self', null=True, blank=True, related_name='children', on_delete=models.CASCADE, verbose_name='父级')
+    level = models.PositiveSmallIntegerField(verbose_name='层级')
+    path = models.CharField(max_length=255, unique=True, verbose_name='路径')
+
+    def save(self, *args, **kwargs):
+        if not self.path:
+            if self.parent_id:
+                self.path = f'{self.parent.path}/{self.name}'
+            else:
+                self.path = self.name
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = '专业分类'
+        verbose_name_plural = verbose_name
+        unique_together = ('parent', 'name')
+
+    def __str__(self):
+        return self.path
