@@ -39,8 +39,14 @@ class Job(models.Model):
     experience_requirement = models.CharField(max_length=20, default='不限', verbose_name='经验要求')  # 无经验/1-3年/不限
     
     # New fields for Filter
-    job_category = models.CharField(max_length=50, blank=True, verbose_name='职位分类') # e.g. 'Java开发'
-    major = models.CharField(max_length=50, blank=True, verbose_name='专业分类') # e.g. '软件工程'
+    # Temporary rename to avoid conflicts, then we will rename back or migrate properly
+    job_category = models.ForeignKey('JobCategory', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='职位分类', db_column='job_category_link_id')
+    major = models.ForeignKey('MajorCategory', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='专业分类', db_column='major_link_id')
+    
+    # Deprecated fields (will be removed later)
+    # job_category = models.CharField(max_length=50, blank=True, verbose_name='职位分类(旧)', db_column='job_category_id')
+    # major = models.CharField(max_length=50, blank=True, verbose_name='专业分类(旧)')
+    
     major_requirement = models.CharField(max_length=50, blank=True, verbose_name='专业要求') # Legacy, or text description
     search_keywords = models.JSONField(default=list, blank=True, verbose_name='搜索关键词')
     reject_reason = models.CharField(max_length=200, blank=True, null=True, verbose_name='驳回原因')

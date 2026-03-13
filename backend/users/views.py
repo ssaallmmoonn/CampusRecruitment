@@ -1,11 +1,17 @@
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .serializers import RegisterSerializer, MyTokenObtainPairSerializer, UserSerializer, StudentSerializer, CompanySerializer, AdministratorSerializer, ChangePasswordSerializer
+from rest_framework.pagination import PageNumberPagination
+from .serializers import RegisterSerializer, MyTokenObtainPairSerializer, UserSerializer, StudentSerializer, CompanySerializer, AdministratorSerializer, ChangePasswordSerializer, IndustrySerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Student, Company, User, Administrator
+from .models import Student, Company, User, Administrator, Industry
 from django.shortcuts import get_object_or_404
 import random
+
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class IsSystemAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -224,6 +230,32 @@ class CompanyViewSet(viewsets.ModelViewSet):
         # Get users associated with these company profiles
         # ids passed are user_ids (primary key of Company model)
         User.objects.filter(id__in=ids).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class IndustryViewSet(viewsets.ModelViewSet):
+    queryset = Industry.objects.all()
+    serializer_class = IndustrySerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = StandardPagination
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'batch_delete']:
+            return [permissions.IsAuthenticated(), IsSystemAdmin()]
+        return [permissions.AllowAny()]
+
+    def get_queryset(self):
+        queryset = Industry.objects.all().order_by('id')
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        return queryset
+
+    @action(detail=False, methods=['post'])
+    def batch_delete(self, request):
+        ids = request.data.get('ids', [])
+        if not ids:
+             return Response({'detail': 'No ids provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        Industry.objects.filter(id__in=ids).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ChangePasswordView(generics.UpdateAPIView):

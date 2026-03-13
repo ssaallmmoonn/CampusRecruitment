@@ -1,71 +1,87 @@
 <template>
   <div class="industry-management">
+    <!-- Top Bar -->
     <el-card class="search-card" shadow="never">
       <div class="search-row">
         <el-input
           v-model="searchQuery"
-          placeholder="请输入职位分类名查询"
-          style="width: 320px"
+          placeholder="请输入关键字查询"
+          style="width: 240px"
           clearable
           @keyup.enter="handleSearch"
           @clear="handleSearch"
         />
-        <el-button type="primary" @click="handleSearch">查询</el-button>
-        <el-button type="success" @click="openCreateDialog({ mode: 'root' })">新增一级分类</el-button>
+        <el-button type="primary" plain @click="handleSearch">查询</el-button>
+        <el-button type="warning" plain @click="handleReset">重置</el-button>
+      </div>
+      <div class="action-row">
+        <el-button type="primary" plain @click="openDialog('create')">新增</el-button>
+        <el-button type="danger" plain @click="handleBatchDelete" :disabled="selectedRows.length === 0">批量删除</el-button>
       </div>
     </el-card>
 
-    <el-card shadow="never">
-      <div v-loading="loading" class="tree-table">
-        <div class="tree-table-header">
-          <div class="col col-name">分类名称</div>
-          <div class="col col-level">层级</div>
-          <div class="col col-path">路径</div>
-          <div class="col col-actions">操作</div>
-        </div>
-        <el-tree
-          :data="treeData"
-          node-key="id"
-          :props="{ children: 'children', label: 'name' }"
-          :indent="0"
-          :expand-on-click-node="false"
-          class="tree-table-body"
-        >
-          <template #default="{ node, data }">
-            <div class="tree-table-row">
-              <div class="col col-name" :style="{ paddingLeft: (node.level - 1) * 24 + 'px' }">
-                <span 
-                  class="custom-expand-icon" 
-                  :class="{ 'is-leaf': node.isLeaf, 'expanded': node.expanded }"
-                  @click.stop="toggleExpand(node)"
-                >
-                  <el-icon><ArrowRight /></el-icon>
-                </span>
-                <span class="name-text">{{ data.name }}</span>
-              </div>
-              <div class="col col-level">{{ data.level }}</div>
-              <div class="col col-path">
-                <span class="path-text">{{ data.path }}</span>
-              </div>
-              <div class="col col-actions">
-                <el-button type="success" size="small" @click="openCreateDialog({ mode: 'child', row: data })" :disabled="data.level >= 3">新增下级</el-button>
-                <el-button type="primary" size="small" @click="openCreateDialog({ mode: 'sibling', row: data })">新增同级</el-button>
-                <el-button size="small" @click="openEditDialog(data)">编辑</el-button>
-                <el-button type="danger" size="small" @click="handleDelete(data)">删除</el-button>
-              </div>
-            </div>
+    <!-- Table -->
+    <el-card shadow="never" class="table-card">
+      <el-table
+        v-loading="loading"
+        :data="tableData"
+        style="width: 100%"
+        @selection-change="handleSelectionChange"
+        header-cell-class-name="table-header"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column prop="name" label="行业名称" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="description" label="行业描述" min-width="300" show-overflow-tooltip />
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" circle size="small" @click="openDialog('edit', row)">
+              <el-icon><Edit /></el-icon>
+            </el-button>
+            <el-button type="danger" circle size="small" @click="handleDelete(row)">
+              <el-icon><Delete /></el-icon>
+            </el-button>
           </template>
-        </el-tree>
+        </el-table-column>
+      </el-table>
+
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px" :close-on-click-modal="false">
-      <el-form :model="form" ref="formRef" label-width="100px">
-        <el-form-item label="父级分类" v-if="dialogMode !== 'edit'">
-          <el-input v-model="form.parentName" disabled />
+    <!-- Dialog -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      width="500px"
+      :close-on-click-modal="false"
+      @closed="resetForm"
+    >
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-width="80px"
+      >
+        <el-form-item label="行业名称" prop="name">
+          <el-input v-model="form.name" placeholder="请输入行业名称" />
         </el-form-item>
-        <el-form-item label="分类名称" prop="name" :rules="[{ required: true, message: '请输入分类名称', trigger: 'blur' }]">
-          <el-input v-model="form.name" />
+        <el-form-item label="行业描述" prop="description">
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入行业描述"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -81,231 +97,201 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowRight } from '@element-plus/icons-vue'
-import { getAdminJobCategoryTree, createAdminJobCategory, updateAdminJobCategory, deleteAdminJobCategory } from '@/api/adminCategories'
+import { Edit, Delete } from '@element-plus/icons-vue'
+import { getIndustries, createIndustry, updateIndustry, deleteIndustry, batchDeleteIndustries } from '@/api/adminIndustries'
 
+// State
 const loading = ref(false)
-const treeData = ref([])
+const tableData = ref([])
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const searchQuery = ref('')
+const selectedRows = ref([])
 
 const dialogVisible = ref(false)
-const dialogMode = ref('root')
+const dialogMode = ref('create') // 'create' or 'edit'
 const submitLoading = ref(false)
 const formRef = ref(null)
 
 const form = reactive({
   id: null,
   name: '',
-  parent: null,
-  parentName: '无'
+  description: ''
 })
 
-const dialogTitle = computed(() => {
-  if (dialogMode.value === 'edit') return '编辑分类'
-  if (dialogMode.value === 'child') return '新增下级分类'
-  if (dialogMode.value === 'sibling') return '新增同级分类'
-  return '新增一级分类'
-})
+const rules = {
+  name: [{ required: true, message: '请输入行业名称', trigger: 'blur' }]
+}
 
-const fetchTree = async () => {
+const dialogTitle = computed(() => dialogMode.value === 'create' ? '新增行业' : '编辑行业')
+
+// Methods
+const fetchData = async () => {
   loading.value = true
   try {
-    const params = {}
-    if (searchQuery.value) params.search = searchQuery.value
-    treeData.value = await getAdminJobCategoryTree(params)
+    const params = {
+      page: currentPage.value,
+      page_size: pageSize.value,
+      search: searchQuery.value
+    }
+    const res = await getIndustries(params)
+    tableData.value = res.results || []
+    total.value = res.count || 0
   } catch (error) {
     console.error(error)
-    ElMessage.error('获取分类数据失败')
+    ElMessage.error('获取数据失败')
   } finally {
     loading.value = false
   }
 }
 
 const handleSearch = () => {
-  fetchTree()
+  currentPage.value = 1
+  fetchData()
 }
 
-const toggleExpand = (node) => {
-  if (node.isLeaf) return
-  node.expanded = !node.expanded
+const handleReset = () => {
+  searchQuery.value = ''
+  handleSearch()
 }
 
-const openCreateDialog = ({ mode, row }) => {
+const handleSelectionChange = (val) => {
+  selectedRows.value = val
+}
+
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  fetchData()
+}
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+  fetchData()
+}
+
+const openDialog = (mode, row) => {
   dialogMode.value = mode
-  form.id = null
-  form.name = ''
-  if (mode === 'root') {
-    form.parent = null
-    form.parentName = '无'
-  } else if (mode === 'child') {
-    form.parent = row.id
-    form.parentName = row.path
-  } else if (mode === 'sibling') {
-    form.parent = row.parent || null
-    form.parentName = row.parent ? '同级父节点' : '无'
+  if (mode === 'edit' && row) {
+    form.id = row.id
+    form.name = row.name
+    form.description = row.description
+  } else {
+    form.id = null
+    form.name = ''
+    form.description = ''
   }
   dialogVisible.value = true
 }
 
-const openEditDialog = (row) => {
-  dialogMode.value = 'edit'
-  form.id = row.id
-  form.name = row.name
-  form.parent = null
-  form.parentName = '无'
-  dialogVisible.value = true
+const resetForm = () => {
+  if (formRef.value) {
+    formRef.value.resetFields()
+  }
 }
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate(async valid => {
-    if (!valid) return
-    submitLoading.value = true
-    try {
-      if (dialogMode.value === 'edit') {
-        await updateAdminJobCategory(form.id, { name: form.name })
-        ElMessage.success('更新成功')
-      } else {
-        const data = { name: form.name }
-        if (form.parent) data.parent = form.parent
-        await createAdminJobCategory(data)
-        ElMessage.success('新增成功')
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      submitLoading.value = true
+      try {
+        if (dialogMode.value === 'create') {
+          await createIndustry(form)
+          ElMessage.success('新增成功')
+        } else {
+          await updateIndustry(form.id, form)
+          ElMessage.success('更新成功')
+        }
+        dialogVisible.value = false
+        fetchData()
+      } catch (error) {
+        console.error(error)
+        ElMessage.error('操作失败')
+      } finally {
+        submitLoading.value = false
       }
-      dialogVisible.value = false
-      fetchTree()
-    } catch (error) {
-      console.error(error)
-      ElMessage.error('操作失败')
-    } finally {
-      submitLoading.value = false
     }
   })
 }
 
 const handleDelete = (row) => {
-  ElMessageBox.confirm(`确定删除分类“${row.name}”吗？其下级将一并删除。`, '提示', {
+  ElMessageBox.confirm(`确定删除行业“${row.name}”吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  })
-    .then(async () => {
-      try {
-        await deleteAdminJobCategory(row.id)
-        ElMessage.success('删除成功')
-        fetchTree()
-      } catch (error) {
-        console.error(error)
-        ElMessage.error('删除失败')
-      }
-    })
-    .catch(() => {})
+  }).then(async () => {
+    try {
+      await deleteIndustry(row.id)
+      ElMessage.success('删除成功')
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      ElMessage.error('删除失败')
+    }
+  }).catch(() => {})
+}
+
+const handleBatchDelete = () => {
+  if (selectedRows.value.length === 0) return
+  ElMessageBox.confirm(`确定删除选中的 ${selectedRows.value.length} 个行业吗？`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const ids = selectedRows.value.map(row => row.id)
+      await batchDeleteIndustries(ids)
+      ElMessage.success('批量删除成功')
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      ElMessage.error('批量删除失败')
+    }
+  }).catch(() => {})
 }
 
 onMounted(() => {
-  fetchTree()
+  fetchData()
 })
 </script>
 
 <style scoped>
+.industry-management {
+  padding: 0;
+}
+
 .search-card {
   margin-bottom: 16px;
 }
 
 .search-row {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
+  margin-bottom: 16px; /* Separate search row from action row */
 }
 
-.tree-table {
-  width: 100%;
-}
-
-.tree-table-header {
+.action-row {
   display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  font-weight: 600;
+  gap: 12px;
+}
+
+.table-card {
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+:deep(.table-header) {
+  background-color: #f5f7fa !important;
   color: #606266;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.tree-table-body {
-  padding: 6px 0;
-}
-
-.tree-table-row {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  width: 100%;
-  padding: 6px 12px;
-}
-
-.col {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  padding: 0 8px;
-  box-sizing: border-box;
-}
-
-.col-name {
-  flex: 1;
-}
-
-.col-level {
-  flex: 1;
-  justify-content: center;
-}
-
-.col-path {
-  flex: 1;
-}
-
-.col-actions {
-  flex: 1;
-  justify-content: flex-start;
-  gap: 8px;
-}
-
-.name-text,
-.path-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.custom-expand-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  color: #909399;
-  transition: transform 0.3s;
-  margin-right: 4px;
-}
-
-.custom-expand-icon.expanded {
-  transform: rotate(90deg);
-}
-
-.custom-expand-icon.is-leaf {
-  visibility: hidden;
-}
-
-:deep(.el-tree-node__content) {
-  height: auto;
-  padding: 0 !important;
-}
-
-:deep(.el-tree-node__content > .el-tree-node__expand-icon) {
-  display: none;
-}
-
-:deep(.el-tree-node__children) {
-  overflow: hidden;
+  font-weight: 600;
 }
 </style>

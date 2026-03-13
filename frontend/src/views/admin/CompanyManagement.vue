@@ -128,7 +128,14 @@
         <el-row :gutter="20">
           <el-col :span="8">
              <el-form-item label="所属行业" prop="industry">
-               <el-input v-model="form.industry" placeholder="请输入行业" />
+               <el-select v-model="form.industry" placeholder="请选择行业" filterable style="width: 100%">
+                 <el-option 
+                   v-for="item in industryOptions" 
+                   :key="item.id" 
+                   :label="item.name" 
+                   :value="item.name" 
+                 />
+               </el-select>
              </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -192,6 +199,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Delete } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { getIndustries } from '@/api/adminIndustries'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -202,6 +210,7 @@ const pageSize = ref(10)
 const total = ref(0)
 const selectedRows = ref([])
 const defaultLogo = 'https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png'
+const industryOptions = ref([])
 
 // Dialog
 const dialogVisible = ref(false)
@@ -462,8 +471,18 @@ const handleSubmit = async () => {
   })
 }
 
+const fetchIndustries = async () => {
+  try {
+    const res = await getIndustries({ page_size: 100 })
+    industryOptions.value = res.results || []
+  } catch (error) {
+    console.error('Failed to fetch industries', error)
+  }
+}
+
 onMounted(() => {
   fetchData()
+  fetchIndustries()
 })
 </script>
 

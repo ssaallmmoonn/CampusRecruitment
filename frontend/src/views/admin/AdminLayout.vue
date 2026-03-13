@@ -53,7 +53,8 @@
               <el-menu-item index="/admin/ads/banner">轮播图区</el-menu-item>
               <el-menu-item index="/admin/ads/brand">品牌专区</el-menu-item>
             </el-sub-menu>
-            <el-menu-item index="/admin/majors">专业信息</el-menu-item>
+            <el-menu-item index="/admin/majors">专业分类</el-menu-item>
+            <el-menu-item index="/admin/job-categories">职位分类</el-menu-item>
             <el-menu-item index="/admin/industries">行业信息</el-menu-item>
             <el-menu-item index="/admin/jobs">职位信息</el-menu-item>
             <el-menu-item index="/admin/applications">职位投递</el-menu-item>

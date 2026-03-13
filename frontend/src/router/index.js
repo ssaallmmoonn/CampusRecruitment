@@ -91,6 +91,7 @@ const routes = [
         path: '/admin',
         component: () => import('@/views/admin/AdminLayout.vue'),
         meta: { requiresAuth: true, role: 0 }, // Assuming 0 is admin
+        redirect: '/admin/dashboard',
         children: [
             {
                 path: 'dashboard',
@@ -121,7 +122,8 @@ const routes = [
                 component: () => import('@/views/admin/ads/BrandManagement.vue'), 
                 meta: { title: '品牌专区' } 
             },
-            { path: 'majors', component: () => import('@/views/admin/MajorManagement.vue'), meta: { title: '专业信息' } },
+            { path: 'majors', component: () => import('@/views/admin/MajorManagement.vue'), meta: { title: '专业分类' } },
+            { path: 'job-categories', component: () => import('@/views/admin/JobCategoryManagement.vue'), meta: { title: '职位分类' } },
             { path: 'industries', component: () => import('@/views/admin/IndustryManagement.vue'), meta: { title: '行业信息' } },
             { 
                 path: 'jobs', 

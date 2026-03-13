@@ -9,9 +9,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "campus_recruitment_system.settings")
 django.setup()
 
-from jobs.models import Job
+from jobs.models import Job, JobCategory, MajorCategory
 from users.models import Company, User
 from django.conf import settings
+from django.db.models import Q
 
 def load_json(filename):
     # Path to frontend assets: backend/../frontend/src/assets
@@ -23,21 +24,104 @@ def load_json(filename):
         print(f"File not found: {path}")
         return {}
 
-def get_majors():
-    data = load_json('major.json')
-    majors = []
-    for l1 in data.get('专业分类', []):
+def populate_categories():
+    print("Populating categories...")
+    
+    # 1. Majors
+    major_data = load_json('major.json')
+    MajorCategory.objects.all().delete()
+    
+    for l1 in major_data.get('专业分类', []):
+        cat1 = MajorCategory.objects.create(name=l1['一级分类'], level=1)
         for l2 in l1.get('二级分类列表', []):
-            majors.extend(l2.get('三级分类', []))
-    return majors
+            cat2 = MajorCategory.objects.create(name=l2['二级分类'], parent=cat1, level=2)
+            for l3_name in l2.get('三级分类', []):
+                MajorCategory.objects.create(name=l3_name, parent=cat2, level=3)
+                
+    # 2. Jobs
+    job_data = load_json('jobs.json')
+    JobCategory.objects.all().delete()
+    
+    for l1 in job_data.get('职位分类', []):
+        cat1 = JobCategory.objects.create(name=l1['一级分类'], level=1)
+        for l2 in l1.get('二级分类列表', []):
+            cat2 = JobCategory.objects.create(name=l2['二级分类'], parent=cat1, level=2)
+            for l3_name in l2.get('三级分类', []):
+                JobCategory.objects.create(name=l3_name, parent=cat2, level=3)
+                
+    print("Categories populated.")
 
-def get_job_categories():
-    data = load_json('jobs.json')
-    categories = []
-    for l1 in data.get('职位分类', []):
-        for l2 in l1.get('二级分类列表', []):
-            categories.extend(l2.get('三级分类', []))
-    return categories
+def get_random_leaf_major():
+    # Get level 3 majors
+    return MajorCategory.objects.filter(level=3).order_by('?').first()
+
+def get_random_leaf_job_category():
+    # Get level 3 job categories
+    return JobCategory.objects.filter(level=3).order_by('?').first()
+
+def get_related_major(job_cat_name):
+    # Enhanced keyword matching logic
+    
+    # Direct mappings for common tech roles to CS majors
+    tech_keywords = ['前端', '后端', '全栈', '软件', '测试', '运维', 'Java', 'Python', 'C++', 'Go', 'PHP', '算法', '数据', '人工智能', 'AI', '机器', '深度']
+    for kw in tech_keywords:
+        if kw in job_cat_name:
+            # Prioritize Computer Science, Software Engineering, etc.
+            cs_majors = MajorCategory.objects.filter(level=3).filter(
+                Q(name__icontains='计算机') | 
+                Q(name__icontains='软件') | 
+                Q(name__icontains='网络') |
+                Q(name__icontains='智能')
+            )
+            if cs_majors.exists():
+                return cs_majors.order_by('?').first()
+
+    # General mappings
+    keywords = {
+        '开发': ['计算机', '软件', '信息', '网络', '通信'],
+        '技术': ['计算机', '软件', '信息', '电子'],
+        '产品': ['计算机', '软件', '管理', '心理学', '设计', '工业设计'],
+        '设计': ['视觉', '美术', '艺术', '设计', '动画', '数字媒体'],
+        '运营': ['市场', '新闻', '传播', '中文', '广告', '管理'],
+        '市场': ['市场', '营销', '商务', '管理', '经济'],
+        '销售': ['市场', '营销', '商务', '管理', '经济'],
+        '人事': ['人力资源', '管理', '心理学', '行政', '公共'],
+        '行政': ['行政', '管理', '中文', '文秘'],
+        '财务': ['会计', '财务', '金融', '经济', '审计'],
+        '金融': ['金融', '经济', '投资', '数学', '统计'],
+        '银行': ['金融', '经济', '会计'],
+        '证券': ['金融', '经济', '投资'],
+        '教师': ['教育', '数学', '英语', '物理', '化学', '中文'],
+        '教务': ['教育', '管理'],
+        '律师': ['法学', '法律'],
+        '法务': ['法学', '法律'],
+        '医生': ['医学', '临床', '护理'],
+        '护士': ['护理'],
+        '建筑': ['建筑', '土木', '工程'],
+        '土木': ['土木', '工程', '建筑'],
+    }
+    
+    related_keywords = []
+    for key, vals in keywords.items():
+        if key in job_cat_name:
+            related_keywords.extend(vals)
+            
+    if not related_keywords:
+        # Default fallback if no keywords match
+        return get_random_leaf_major()
+        
+    # Search for majors containing these keywords
+    query = Q()
+    for kw in related_keywords:
+        query |= Q(name__icontains=kw)
+        
+    majors = MajorCategory.objects.filter(level=3).filter(query)
+    
+    if majors.exists():
+        return majors.order_by('?').first()
+    else:
+        # If we have keywords but found no matching major (rare), try looser match or random
+        return get_random_leaf_major()
 
 def get_locations():
     data = load_json('provinces.json')
@@ -89,91 +173,73 @@ def populate():
         print("No active companies found. Aborting.")
         return
 
-    # 2. Load JSON data
-    majors = get_majors()
-    job_cats = get_job_categories()
+    # 2. Load and Populate Categories
+    populate_categories()
+    
+    # Get all leaf categories for generation
+    all_job_cats = JobCategory.objects.filter(level=3)
     locations = get_locations()
     
-    if not majors or not job_cats or not locations:
-        print("Failed to load JSON data. Aborting.")
+    if not all_job_cats.exists() or not locations:
+        print("Failed to load category data. Aborting.")
         return
         
-    print(f"Loaded {len(majors)} majors, {len(job_cats)} job categories, {len(locations)} locations.")
+    print(f"Loaded {all_job_cats.count()} job categories, {len(locations)} locations.")
 
-    # 3. Clear existing jobs (Optional: maybe only clear mock jobs? For now, clear all to ensure consistency with new schema)
-    # The user asked to "update database", implying getting it in sync.
+    # 3. Clear existing jobs
     print("Clearing existing jobs...")
     Job.objects.all().delete()
 
     # 4. Generate jobs
-    # The goal is to generate jobs for EVERY major and EVERY job category to ensure full coverage
     print("Generating comprehensive mock jobs...")
     
-    # Generate at least 1 job for each major
-    print(f"Generating jobs for {len(majors)} majors...")
-    for major in majors:
-        company = random.choice(companies)
-        cat = random.choice(job_cats) # Random category for now, or could try to match
-        loc = random.choice(locations)
-        
-        # Determine likely prefix
-        prefixes = ['资深', '高级', '初级', '实习', '助理', '']
-        title = f"{random.choice(prefixes)}{cat}"
-        
-        Job.objects.create(
-            company=company,
-            job_name=title,
-            salary=f"{random.randint(4, 25)}k-{random.randint(26, 60)}k" if random.random() > 0.2 else "面议",
-            location=loc,
-            job_type=random.choice(['全职', '实习']),
-            degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限']),
-            experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限']),
-            description=f"这是一个关于 {cat} 的职位。\n\n岗位职责：\n1. 负责{cat}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
-            requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
-            audit_status=1,
-            job_category=cat,
-            major=major,
-            major_requirement=f"{major}及相关专业",
-            views_count=random.randint(0, 5000)
-        )
-
-    # Generate at least 1 job for each job category
-    print(f"Generating jobs for {len(job_cats)} job categories...")
-    for cat in job_cats:
-        company = random.choice(companies)
-        major = random.choice(majors)
-        loc = random.choice(locations)
-        
-        prefixes = ['资深', '高级', '初级', '实习', '助理', '']
-        title = f"{random.choice(prefixes)}{cat}"
-        
-        Job.objects.create(
-            company=company,
-            job_name=title,
-            salary=f"{random.randint(4, 25)}k-{random.randint(26, 60)}k" if random.random() > 0.2 else "面议",
-            location=loc,
-            job_type=random.choice(['全职', '实习']),
-            degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限']),
-            experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限']),
-            description=f"这是一个关于 {cat} 的职位。\n\n岗位职责：\n1. 负责{cat}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
-            requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
-            audit_status=1,
-            job_category=cat,
-            major=major,
-            major_requirement=f"{major}及相关专业",
-            views_count=random.randint(0, 5000)
-        )
-        
-    # Generate some extra random jobs to add variety
-    print("Generating 200 extra random jobs for density...")
+    # Generate jobs for each job category
+    for cat in all_job_cats:
+        # Create 1-3 jobs for each category
+        for _ in range(random.randint(1, 3)):
+            company = random.choice(companies)
+            loc = random.choice(locations)
+            
+            # Find a related major
+            major = get_related_major(cat.name)
+            
+            prefixes = ['资深', '高级', '初级', '实习', '助理', '']
+            title = f"{random.choice(prefixes)}{cat.name}"
+            
+            Job.objects.create(
+                company=company,
+                job_name=title,
+                salary=f"{random.randint(4, 25)}k-{random.randint(26, 60)}k" if random.random() > 0.2 else "面议",
+                location=loc,
+                job_type=random.choice(['全职', '实习']),
+                degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限']),
+                experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限']),
+                description=f"这是一个关于 {cat.name} 的职位。\n\n岗位职责：\n1. 负责{cat.name}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
+                requirements=f"任职要求：\n1. {major.name}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
+                audit_status=1,
+                
+                # New FK fields - passing instances
+                job_category=cat,
+                major=major,
+                
+                # Deprecated fields - removed as they are no longer in model definition
+                # Or if they are present as dummy fields, we can ignore them or set them if needed.
+                # Based on models.py read earlier, job_category IS the FK.
+                
+                major_requirement=f"{major.name}及相关专业",
+                views_count=random.randint(0, 5000)
+            )
+            
+    print("Generating extra random jobs...")
+    # Generate extra jobs randomly
     for i in range(200):
         company = random.choice(companies)
-        cat = random.choice(job_cats)
-        major = random.choice(majors)
+        cat = get_random_leaf_job_category()
+        major = get_related_major(cat.name)
         loc = random.choice(locations)
         
         prefixes = ['资深', '高级', '初级', '实习', '助理', '']
-        title = f"{random.choice(prefixes)}{cat}"
+        title = f"{random.choice(prefixes)}{cat.name}"
         
         Job.objects.create(
             company=company,
@@ -183,12 +249,15 @@ def populate():
             job_type=random.choice(['全职', '实习']),
             degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限']),
             experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限']),
-            description=f"这是一个关于 {cat} 的职位。\n\n岗位职责：\n1. 负责{cat}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
-            requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
+            description=f"这是一个关于 {cat.name} 的职位。\n\n岗位职责：\n1. 负责{cat.name}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
+            requirements=f"任职要求：\n1. {major.name}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
             audit_status=1,
+            
+            # New FK fields - passing instances
             job_category=cat,
             major=major,
-            major_requirement=f"{major}及相关专业",
+            
+            major_requirement=f"{major.name}及相关专业",
             views_count=random.randint(0, 5000)
         )
 

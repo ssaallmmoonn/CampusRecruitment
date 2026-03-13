@@ -70,12 +70,13 @@
         <el-row :gutter="20">
           <el-col :span="8">
              <el-form-item label="所属行业" prop="industry">
-              <el-select v-model="form.industry" style="width: 100%" allow-create filterable default-first-option>
-                <el-option label="计算机软件" value="计算机软件" />
-                <el-option label="互联网" value="互联网" />
-                <el-option label="电子通信" value="电子通信" />
-                <el-option label="金融" value="金融" />
-                <el-option label="教育" value="教育" />
+              <el-select v-model="form.industry" style="width: 100%" filterable placeholder="请选择行业">
+                <el-option 
+                  v-for="item in industryOptions" 
+                  :key="item.id" 
+                  :label="item.name" 
+                  :value="item.name" 
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -142,6 +143,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { getCompanyDetail, updateCompanyProfile } from '@/api/company'
+import { getIndustries } from '@/api/adminIndustries'
 import { changePassword } from '@/api/user'
 import { ElMessage, ElNotification } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -152,6 +154,7 @@ const router = useRouter()
 const formRef = ref(null)
 const loading = ref(false)
 const originalForm = reactive({}) // To store original data for comparison
+const industryOptions = ref([])
 
 const form = reactive({
   company_name: '',
@@ -289,6 +292,15 @@ const fetchData = async () => {
   } catch (error) {
     console.error(error)
     ElMessage.error('获取企业信息失败')
+  }
+}
+
+const fetchIndustries = async () => {
+  try {
+    const res = await getIndustries({ page_size: 100 })
+    industryOptions.value = res.results || []
+  } catch (error) {
+    console.error('Failed to fetch industries', error)
   }
 }
 
@@ -491,6 +503,7 @@ const handleChangePassword = async () => {
 
 onMounted(() => {
   fetchData()
+  fetchIndustries()
 })
 </script>
 

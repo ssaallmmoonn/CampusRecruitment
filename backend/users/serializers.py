@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import Student, Company, Administrator
+from .models import Student, Company, Administrator, Industry
 
 User = get_user_model()
 
@@ -44,6 +44,11 @@ class AdministratorSerializer(serializers.ModelSerializer):
         model = Administrator
         fields = ('user', 'username', 'name', 'avatar', 'phone', 'email')
         read_only_fields = ('user',)
+
+class IndustrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Industry
+        fields = '__all__'
 
 class StudentSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username')

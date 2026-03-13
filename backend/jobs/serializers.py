@@ -177,6 +177,9 @@ class MajorCategoryAdminTreeSerializer(serializers.ModelSerializer):
 class JobSerializer(serializers.ModelSerializer):
     company = CompanySerializer(read_only=True)
     is_applied = serializers.SerializerMethodField()
+    # Use StringRelatedField to return the name of the category instead of ID
+    job_category = serializers.StringRelatedField()
+    major = serializers.StringRelatedField()
     
     class Meta:
         model = Job
@@ -215,6 +218,10 @@ class JobSerializer(serializers.ModelSerializer):
         return value
 
 class JobCreateSerializer(serializers.ModelSerializer):
+    # Explicitly declare as CharField to accept strings from frontend
+    job_category = serializers.CharField(required=True)
+    major = serializers.CharField(required=True)
+    
     class Meta:
         model = Job
         fields = ('job_name', 'salary', 'location', 'description', 'requirements',
@@ -231,6 +238,28 @@ class JobCreateSerializer(serializers.ModelSerializer):
              raise serializers.ValidationError("Company profile not found.")
 
         validated_data['company'] = user.company_profile
+        
+        # Convert string names to model instances for ForeignKeys
+        # Note: validate_job_category and validate_major ensure these exist
+        if 'job_category' in validated_data and isinstance(validated_data['job_category'], str):
+             name = validated_data['job_category']
+             # Assuming name is unique at level 3 or path is provided. 
+             # The validator checks for level=3.
+             # We try to find by path first, then name.
+             if '/' in name:
+                 validated_data['job_category'] = JobCategory.objects.get(path=name, level=3)
+             else:
+                 # This might be ambiguous if multiple categories have same name, 
+                 # but for now pick the first one matching level 3.
+                 validated_data['job_category'] = JobCategory.objects.filter(name=name, level=3).first()
+
+        if 'major' in validated_data and isinstance(validated_data['major'], str):
+             name = validated_data['major']
+             if '/' in name:
+                 validated_data['major'] = MajorCategory.objects.get(path=name, level=3)
+             else:
+                 validated_data['major'] = MajorCategory.objects.filter(name=name, level=3).first()
+                 
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
@@ -238,6 +267,22 @@ class JobCreateSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.role == 2:
             instance.audit_status = 0
+            
+        # Convert string names to model instances for ForeignKeys
+        if 'job_category' in validated_data and isinstance(validated_data['job_category'], str):
+             name = validated_data['job_category']
+             if '/' in name:
+                 validated_data['job_category'] = JobCategory.objects.get(path=name, level=3)
+             else:
+                 validated_data['job_category'] = JobCategory.objects.filter(name=name, level=3).first()
+
+        if 'major' in validated_data and isinstance(validated_data['major'], str):
+             name = validated_data['major']
+             if '/' in name:
+                 validated_data['major'] = MajorCategory.objects.get(path=name, level=3)
+             else:
+                 validated_data['major'] = MajorCategory.objects.filter(name=name, level=3).first()
+                 
         return super().update(instance, validated_data)
 
     def validate_job_category(self, value):

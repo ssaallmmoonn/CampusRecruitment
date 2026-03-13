@@ -92,3 +92,14 @@ class Administrator(models.Model):
     class Meta:
         verbose_name = '管理员信息'
         verbose_name_plural = verbose_name
+
+class Industry(models.Model):
+    name = models.CharField(max_length=50, verbose_name='行业名称')
+    description = models.TextField(blank=True, verbose_name='行业描述')
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = '行业信息'
+        verbose_name_plural = verbose_name

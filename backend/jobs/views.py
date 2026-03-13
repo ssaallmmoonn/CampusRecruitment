@@ -19,8 +19,8 @@ class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
 
 class JobFilter(django_filters.FilterSet):
     location = CharInFilter(field_name='location', lookup_expr='in')
-    job_category = django_filters.CharFilter(lookup_expr='icontains')
-    major = django_filters.CharFilter(lookup_expr='icontains')
+    job_category = django_filters.CharFilter(field_name='job_category__name', lookup_expr='icontains')
+    major = django_filters.CharFilter(field_name='major__name', lookup_expr='icontains')
     job_name = django_filters.CharFilter(lookup_expr='icontains')
     company_name = django_filters.CharFilter(field_name='company__company_name', lookup_expr='icontains')
     
@@ -165,10 +165,11 @@ class JobViewSet(viewsets.ModelViewSet):
         if not company_id:
             return Response([])
         
+        # Return category names instead of IDs
         categories = Job.objects.filter(
             company_id=company_id, 
             audit_status=1
-        ).values_list('job_category', flat=True).distinct()
+        ).values_list('job_category__name', flat=True).distinct()
         
         # Filter out empty strings if any
         categories = [c for c in categories if c]
@@ -188,7 +189,8 @@ class JobViewSet(viewsets.ModelViewSet):
         )
 
         if job_category:
-            queryset = queryset.filter(job_category=job_category)
+            # Filter by category name
+            queryset = queryset.filter(job_category__name=job_category)
             
         locations = queryset.values_list('location', flat=True).distinct()
         
@@ -389,10 +391,18 @@ class DashboardViewSet(viewsets.ViewSet):
         prefixes = ['资深', '高级', '初级', '实习', '助理', '']
         for i in range(20):
             company = random.choice(companies)
-            cat = random.choice(job_cats)
-            major = random.choice(majors)
+            cat_name = random.choice(job_cats)
+            major_name = random.choice(majors)
             loc = random.choice(locations)
-            title = f"{random.choice(prefixes)}{cat}"
+            title = f"{random.choice(prefixes)}{cat_name}"
+
+            # Try to find existing category instances or create/pick one
+            cat_instance = JobCategory.objects.filter(name=cat_name).first()
+            major_instance = MajorCategory.objects.filter(name=major_name).first()
+            
+            # If not found (unlikely if populated properly), skip or handle
+            if not cat_instance or not major_instance:
+                 continue
 
             Job.objects.create(
                 company=company,
@@ -402,11 +412,11 @@ class DashboardViewSet(viewsets.ViewSet):
                 job_type=random.choice(['全职', '实习']),
                 degree_requirement=random.choice(['本科', '硕士', '大专', '学历不限', '博士', '高中', '中专/中技']),
                 experience_requirement=random.choice(['无经验', '1-3年', '3-5年', '经验不限', '5-10年']),
-                description=f"这是一个关于 {cat} 的职位。\n\n岗位职责：\n1. 负责{cat}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
-                requirements=f"任职要求：\n1. {major}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
+                description=f"这是一个关于 {cat_name} 的职位。\n\n岗位职责：\n1. 负责{cat_name}相关工作；\n2. 参与项目需求分析；\n3. 完成上级交代的其他任务。\n\n我们提供有竞争力的薪酬和完善的福利。",
+                requirements=f"任职要求：\n1. {major_name}或相关专业优先；\n2. 熟悉相关技能；\n3. 良好的沟通能力和团队协作精神。",
                 audit_status=1,
-                job_category=cat,
-                major=major,
-                major_requirement=f"{major}及相关专业",
+                job_category=cat_instance,
+                major=major_instance,
+                major_requirement=f"{major_name}及相关专业",
                 views_count=random.randint(0, 5000)
             )
