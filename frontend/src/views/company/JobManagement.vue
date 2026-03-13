@@ -134,7 +134,15 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="工作地点" prop="location">
-              <el-input v-model="jobForm.location" />
+              <el-cascader
+                v-model="jobForm.location"
+                :options="locationOptions"
+                :props="cascaderProps"
+                placeholder="请选择工作地点"
+                filterable
+                clearable
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -240,6 +248,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getJobs, createJob, updateJob, deleteJob, getJobCategoryTree, getMajorCategoryTree } from '@/api/jobs'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Delete } from '@element-plus/icons-vue'
+import provinceData from '@/assets/provinces.json'
 
 const loading = ref(false)
 const jobs = ref([])
@@ -264,6 +273,7 @@ const jobFormRef = ref(null)
 
 const jobCategoryOptions = ref([])
 const majorOptions = ref([])
+const locationOptions = ref([])
 const cascaderProps = { emitPath: false }
 
 const jobForm = reactive({
@@ -322,6 +332,19 @@ const loadCategoryOptions = async () => {
   } catch (error) {
     console.error(error)
     ElMessage.error('获取分类数据失败')
+  }
+}
+
+const initLocationOptions = () => {
+  if (provinceData && provinceData['地区分类']) {
+    locationOptions.value = provinceData['地区分类'].map(province => ({
+      label: province['一级分类'],
+      value: province['一级分类'],
+      children: province['二级分类'].map(city => ({
+        label: city,
+        value: city
+      }))
+    }))
   }
 }
 
@@ -522,6 +545,7 @@ const handleCurrentChange = (val) => {
 
 onMounted(() => {
   loadCategoryOptions()
+  initLocationOptions()
   fetchData()
 })
 </script>

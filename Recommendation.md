@@ -48,7 +48,7 @@
     设 $i$ 和 $j$ 是两个不同的岗位，$U(i)$ 是对岗位 $i$ 产生过行为的用户集合，$R_{u,i}$ 是用户 $u$ 对岗位 $i$ 的行为评分。岗位 $i$ 和 $j$ 的相似度 $sim(i, j)$ 为：
 
 $$
-$$sim(i, j) = \frac{\sum_{u \in U(i,j)} R_{u,i} R_{u,j}}{\sqrt{\sum_{u \in U(i)} R_{u,i}^2} \sqrt{\sum_{u \in U(j)} R_{u,j}^2}}$$
+sim(i, j) = \frac{\sum_{u \in U(i,j)} R_{u,i} R_{u,j}}{\sqrt{\sum_{u \in U(i)} R_{u,i}^2} \sqrt{\sum_{u \in U(j)} R_{u,j}^2}}
 $$
 
 ### 2. 如何预测用户会对某个未看过的岗位打多少分？
@@ -62,7 +62,7 @@ $$
     设我们要预测用户 $u$ 对未接触过的岗位 $j$ 的评分 $P_{u,j}$。$N(j)$ 表示与岗位 $j$ 最相似的 $K$ 个岗位集合（并且是用户 $u$ 曾经产生过行为的）：
 
 $$
-$$P_{u,j} = \frac{\sum_{i \in N(j)} sim(i, j) \cdot R_{u,i}}{\sum_{i \in N(j)} |sim(i, j)|}$$
+P_{u,j} = \frac{\sum_{i \in N(j)} sim(i, j) \cdot R_{u,i}}{\sum_{i \in N(j)} |sim(i, j)|}
 $$
 
 

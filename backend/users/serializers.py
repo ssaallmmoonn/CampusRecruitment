@@ -56,7 +56,7 @@ class StudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ('user', 'username', 'email', 'name', 'major', 'school', 'education', 'graduation_year', 'phone', 'avatar')
+        fields = ('user', 'username', 'email', 'name', 'major', 'school', 'education', 'graduation_year', 'phone', 'avatar', 'job_intention')
         read_only_fields = ('user',)
     
     def validate_username(self, value):
@@ -117,6 +117,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     education = serializers.CharField(required=False, allow_blank=True)
     graduation_year = serializers.IntegerField(required=False, allow_null=True)
     phone = serializers.CharField(required=False, allow_blank=True)
+    job_intention = serializers.CharField(required=False, allow_blank=True)
 
     # Company specific fields
     company_name = serializers.CharField(required=False, allow_blank=True)
@@ -127,7 +128,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'password', 'email', 'role', 
-                  'name', 'major', 'school', 'education', 'graduation_year', 'phone',
+                  'name', 'major', 'school', 'education', 'graduation_year', 'phone', 'job_intention',
                   'company_name', 'credit_code', 'contact_person', 'contact_phone')
 
     def create(self, validated_data):
@@ -148,7 +149,8 @@ class RegisterSerializer(serializers.ModelSerializer):
                 education=validated_data.get('education', ''),
                 graduation_year=validated_data.get('graduation_year'),
                 email=validated_data.get('email', ''),
-                phone=validated_data.get('phone', '')
+                phone=validated_data.get('phone', ''),
+                job_intention=validated_data.get('job_intention', '')
             )
         elif role == 2:  # Company
             Company.objects.create(

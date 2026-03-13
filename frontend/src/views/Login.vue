@@ -55,16 +55,21 @@
                 <el-input v-model="registerForm.major" />
               </el-form-item>
               <el-form-item label="学历">
-                <el-select v-model="registerForm.education">
-                  <el-option label="高中及以下" value="High School" />
-                  <el-option label="大专" value="College" />
-                  <el-option label="本科" value="Bachelor" />
-                  <el-option label="硕士" value="Master" />
-                  <el-option label="博士" value="PhD" />
+                <el-select v-model="registerForm.education" placeholder="请选择学历">
+                  <el-option label="初中及以下" value="初中及以下" />
+                  <el-option label="高中" value="高中" />
+                  <el-option label="中专/中技" value="中专/中技" />
+                  <el-option label="大专" value="大专" />
+                  <el-option label="本科" value="本科" />
+                  <el-option label="硕士" value="硕士" />
+                  <el-option label="博士" value="博士" />
                 </el-select>
               </el-form-item>
                <el-form-item label="毕业年份">
                 <el-input v-model.number="registerForm.graduation_year" />
+              </el-form-item>
+              <el-form-item label="求职意向">
+                <el-input v-model="registerForm.job_intention" />
               </el-form-item>
             </template>
             
@@ -127,8 +132,9 @@ const registerForm = reactive({
   name: '',
   school: '',
   major: '',
-  education: 'Bachelor',
+  education: '本科',
   graduation_year: new Date().getFullYear(),
+  job_intention: '',
   // Company
   company_name: '',
   credit_code: '',

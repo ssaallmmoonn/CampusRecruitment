@@ -17,6 +17,18 @@
           clearable
           @clear="handleSearch"
         />
+        <el-select
+          v-model="searchAuditStatus"
+          placeholder="请选择审核状态"
+          style="width: 160px"
+          clearable
+          @change="handleSearch"
+        >
+          <el-option label="待审核" :value="0" />
+          <el-option label="通过" :value="1" />
+          <el-option label="驳回" :value="2" />
+          <el-option label="已下架" :value="3" />
+        </el-select>
         <el-button type="primary" @click="handleSearch">查询</el-button>
         <el-button type="warning" @click="handleReset">重置</el-button>
       </div>
@@ -37,7 +49,7 @@
         </el-table-column>
         <el-table-column label="行业" min-width="120" show-overflow-tooltip>
           <template #default="scope">
-            {{ getParentCategory(scope.row.job_category) }}
+            {{ scope.row.company?.industry || '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="job_type" label="求职类型" width="100" />
@@ -168,6 +180,7 @@ const loading = ref(false)
 const tableData = ref([])
 const searchJobName = ref('')
 const searchCompany = ref('')
+const searchAuditStatus = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -225,7 +238,8 @@ const fetchData = async () => {
       page: currentPage.value,
       page_size: pageSize.value,
       job_name: searchJobName.value || undefined,
-      company_name: searchCompany.value || undefined
+      company_name: searchCompany.value || undefined,
+      audit_status: searchAuditStatus.value !== '' ? searchAuditStatus.value : undefined
     }
 
     const res = await request.get('/jobs/', { params })
@@ -247,6 +261,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchJobName.value = ''
   searchCompany.value = ''
+  searchAuditStatus.value = ''
   handleSearch()
 }
 

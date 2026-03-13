@@ -60,6 +60,11 @@
               </el-select>
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="求职意向" prop="job_intention">
+              <el-input v-model="form.job_intention" placeholder="请输入求职意向" />
+            </el-form-item>
+          </el-col>
         </el-row>
 
         <el-row :gutter="20">
@@ -200,6 +205,7 @@ const form = reactive({
   education: '',
   school: '',
   major: '',
+  job_intention: '',
   graduation_year: new Date().getFullYear(),
   phone: '',
   email: ''
