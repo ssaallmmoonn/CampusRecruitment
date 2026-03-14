@@ -9,7 +9,7 @@ urlpatterns = [
     path('api/jobs/', include('jobs.urls')),
     path('api/recruitment/', include('recruitment.urls')),
     path('api/ads/', include('ads.urls')),
-    # path('api/recommendation/', include('recommendation.urls')),
+    path('api/recommendation/', include('recommendation.urls')),
 ]
 
 if settings.DEBUG:

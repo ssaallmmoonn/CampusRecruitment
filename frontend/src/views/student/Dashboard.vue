@@ -308,12 +308,13 @@ const handleBannerClick = (item) => {
 const fetchBrandZone = async () => {
   try {
     const res = await getBrands()
-    brandCards.value = (res.results || res).map(item => ({
+    const data = res.results || res
+    brandCards.value = Array.isArray(data) ? data.map(item => ({
       id: item.id,
       name: item.name,
       image: item.logo,
       companyId: item.company
-    }))
+    })) : []
   } catch (error) {
     console.error('Failed to fetch brand zone:', error)
   }
@@ -328,7 +329,7 @@ const handleBrandClick = (brand) => {
 const fetchSelectedJobs = async () => {
   try {
     const res = await request.get('/jobs/dashboard/selected-jobs/')
-    selectedJobs.value = res.map(item => ({
+    selectedJobs.value = Array.isArray(res) ? res.map(item => ({
       id: item.id,
       title: item.job_name,
       salary: item.salary,
@@ -342,7 +343,7 @@ const fetchSelectedJobs = async () => {
         type: item.company.nature
       },
       location: item.location
-    }))
+    })) : []
   } catch (error) {
     console.error('Failed to fetch selected jobs:', error)
   }

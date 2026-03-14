@@ -30,17 +30,26 @@ class JobApplicationCreateSerializer(serializers.ModelSerializer):
         # Ensure the user is a student
         user = self.context['request'].user
         if user.role != 1:
-            raise serializers.ValidationError("Only students can apply for jobs.")
+            raise serializers.ValidationError("只有学生账号才能进行职位投递。")
+        
+        # Ensure student profile exists
+        try:
+            student = user.student_profile
+        except Exception:
+            raise serializers.ValidationError("您的学生资料不完整，请先完善个人资料。")
         
         # Ensure student hasn't already applied for this job
         job = attrs.get('job')
-        if JobApplication.objects.filter(student=user.student_profile, job=job).exists():
-            raise serializers.ValidationError("You have already applied for this job.")
+        if JobApplication.objects.filter(student=student, job=job).exists():
+            raise serializers.ValidationError("您已经投递过该职位，请勿重复投递。")
             
         return attrs
 
     def create(self, validated_data):
-        validated_data['student'] = self.context['request'].user.student_profile
+        try:
+            validated_data['student'] = self.context['request'].user.student_profile
+        except Exception:
+            raise serializers.ValidationError("学生资料不完整。")
         return super().create(validated_data)
 
 class BehaviorSerializer(serializers.ModelSerializer):

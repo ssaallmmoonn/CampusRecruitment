@@ -33,26 +33,6 @@ class ResumeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Resume.objects.filter(student=self.request.user.student_profile)
 
-
-
-
-    def create(self, request, *args, **kwargs):
-        # Check if already applied
-        job_id = request.data.get('job')
-        if job_id:
-             try:
-                 student = request.user.student_profile
-                 if JobApplication.objects.filter(student=student, job_id=job_id).exists():
-                     return Response(
-                         {'detail': '您已经投递过该职位，请勿重复投递'}, 
-                         status=status.HTTP_400_BAD_REQUEST
-                     )
-             except Exception:
-                 # In case user has no student profile or other error
-                 pass
-        
-        return super().create(request, *args, **kwargs)
-
     def perform_create(self, serializer):
         serializer.save(student=self.request.user.student_profile)
 
@@ -143,7 +123,11 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         if not job_id:
             return Response({'error': 'job_id is required'}, status=status.HTTP_400_BAD_REQUEST)
             
-        student = request.user.student_profile
+        try:
+            student = request.user.student_profile
+        except Exception:
+            return Response({'applied': False, 'msg': 'Student profile not found'})
+            
         application = JobApplication.objects.filter(student=student, job_id=job_id).first()
         
         if application:
