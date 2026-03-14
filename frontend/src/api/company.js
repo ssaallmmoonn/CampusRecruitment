@@ -14,3 +14,10 @@ export function updateCompanyProfile(id, data) {
     data
   })
 }
+
+export function getCompanyDashboard() {
+  return request({
+    url: '/users/company-dashboard/',
+    method: 'get'
+  })
+}

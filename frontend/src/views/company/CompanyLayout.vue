@@ -42,7 +42,7 @@
           >
             <el-menu-item index="/company/dashboard">
               <el-icon><Odometer /></el-icon>
-              <span>系统首页</span>
+              <span>数据看板</span>
             </el-menu-item>
             <el-sub-menu index="1">
               <template #title>
@@ -85,7 +85,7 @@ const activeMenu = computed(() => {
 })
 
 const currentRouteName = computed(() => {
-  if (route.path.includes('/dashboard')) return '首页'
+  if (route.path.includes('/dashboard')) return '数据看板'
   if (route.path.includes('/jobs')) return '职位信息'
   if (route.path.includes('/applications')) return '职位投递'
   if (route.path.includes('/profile')) return '企业资料'

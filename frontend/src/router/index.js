@@ -97,7 +97,7 @@ const routes = [
                 path: 'dashboard',
                 name: 'AdminDashboard',
                 component: () => import('@/views/admin/Dashboard.vue'),
-                meta: { title: '系统首页' }
+                meta: { title: '数据看板' }
             },
             {
                 path: 'profile',

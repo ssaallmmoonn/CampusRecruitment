@@ -156,6 +156,16 @@ class JobViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.views_count += 1
         instance.save(update_fields=['views_count'])
+        
+        # Log browse behavior if student is logged in
+        if request.user.is_authenticated and request.user.role == 1:
+            from recruitment.models import Behavior
+            Behavior.objects.create(
+                student=request.user.student_profile,
+                job=instance,
+                behavior_type=1 # Browse
+            )
+            
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 

@@ -39,7 +39,7 @@
         >
           <el-menu-item index="/admin/dashboard">
             <el-icon><HomeFilled /></el-icon>
-            <span>系统首页</span>
+            <span>数据看板</span>
           </el-menu-item>
           
           <el-sub-menu index="info">

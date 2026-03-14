@@ -100,7 +100,14 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # When creating application, also log 'delivery' behavior (type=3)
-        instance = serializer.save()
+        from recommendation.models import Recommendation
+        student = self.request.user.student_profile
+        job = serializer.validated_data['job']
+        
+        # Check if this was a recommended application
+        is_recommended = Recommendation.objects.filter(student=student, job=job).exists()
+        
+        instance = serializer.save(is_recommended=is_recommended)
         
         # Log behavior
         Behavior.objects.create(
