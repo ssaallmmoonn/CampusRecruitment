@@ -26,16 +26,20 @@
         :data="jobs"
         style="width: 100%"
         @selection-change="handleSelectionChange"
+        @sort-change="handleSortChange"
       >
         <el-table-column type="selection" width="50" />
-        <el-table-column prop="job_name" label="职位名称" min-width="100" show-overflow-tooltip />
+        <el-table-column prop="job_name" label="职位名称" min-width="120" show-overflow-tooltip />
         <el-table-column prop="company.company_name" label="招聘企业" min-width="100" show-overflow-tooltip />
         <el-table-column prop="company.industry" label="行业" min-width="50" />
         <el-table-column prop="job_type" label="求职类型" width="100" />
-        <el-table-column prop="experience_requirement" label="工作经验" width="150" />
+        <el-table-column prop="experience_requirement" label="工作经验" width="120" />
         <el-table-column prop="salary" label="薪资待遇" width="120" />
         <el-table-column prop="degree_requirement" label="学历要求" width="100" />
-        <el-table-column label="职业描述与要求" width="150">
+        <el-table-column prop="views_count" label="浏览量" width="90" sortable="custom" />
+        <el-table-column prop="collections_count" label="收藏量" width="90" sortable="custom" />
+        <el-table-column prop="deliveries_count" label="投递量" width="90" sortable="custom" />
+        <el-table-column label="职业描述与要求" width="130">
           <template #default="scope">
             <el-button type="primary" size="small" @click="showDescription(scope.row)">点击查看</el-button>
           </template>
@@ -356,7 +360,7 @@ const fetchData = async () => {
       page_size: pageSize.value,
       search: searchForm.job_name || undefined, // Use search parameter for fuzzy search
       my_jobs: 'true', // Important: Filter for current company
-      ordering: '-create_time'
+      ordering: currentOrdering.value || '-create_time'
     }
     const res = await getJobs(params)
     if (res.results) {
@@ -372,6 +376,18 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const currentOrdering = ref('-create_time')
+
+const handleSortChange = ({ prop, order }) => {
+  if (!order) {
+    currentOrdering.value = '-create_time'
+  } else {
+    currentOrdering.value = order === 'ascending' ? prop : `-${prop}`
+  }
+  currentPage.value = 1
+  fetchData()
 }
 
 const handleSearch = () => {

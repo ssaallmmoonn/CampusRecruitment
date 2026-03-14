@@ -3,7 +3,7 @@
     <el-header class="admin-header">
       <div class="header-left">
         <img src="@/assets/超级三文鱼.jpg" alt="Logo" class="logo" />
-        <span class="system-name">三之文鱼招聘管理后台</span>
+        <span class="system-name">三之文鱼招聘管理员端后台</span>
       </div>
       <div class="header-center">
         <el-breadcrumb separator="/">

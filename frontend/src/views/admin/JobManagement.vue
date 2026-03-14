@@ -39,6 +39,7 @@
         :data="tableData"
         style="width: 100%"
         @selection-change="handleSelectionChange"
+        @sort-change="handleSortChange"
       >
         <el-table-column type="selection" width="55" />
         <el-table-column prop="job_name" label="职位名称" min-width="150" show-overflow-tooltip />
@@ -56,6 +57,9 @@
         <el-table-column prop="experience_requirement" label="工作经验" width="120" />
         <el-table-column prop="salary" label="薪资待遇" width="120" />
         <el-table-column prop="degree_requirement" label="学历要求" width="100" />
+        <el-table-column prop="views_count" label="浏览量" width="90" sortable="custom" />
+        <el-table-column prop="collections_count" label="收藏量" width="90" sortable="custom" />
+        <el-table-column prop="deliveries_count" label="投递量" width="90" sortable="custom" />
         <el-table-column label="职位描述与要求" width="150" align="center">
           <template #default="scope">
             <el-button type="primary" size="small" @click="handleViewDescription(scope.row)">
@@ -231,6 +235,18 @@ const getParentCategory = (categoryName) => {
   return '-'
 }
 
+const currentOrdering = ref('-create_time')
+
+const handleSortChange = ({ prop, order }) => {
+  if (!order) {
+    currentOrdering.value = '-create_time'
+  } else {
+    currentOrdering.value = order === 'ascending' ? prop : `-${prop}`
+  }
+  currentPage.value = 1
+  fetchData()
+}
+
 const fetchData = async () => {
   loading.value = true
   try {
@@ -239,7 +255,8 @@ const fetchData = async () => {
       page_size: pageSize.value,
       job_name: searchJobName.value || undefined,
       company_name: searchCompany.value || undefined,
-      audit_status: searchAuditStatus.value !== '' ? searchAuditStatus.value : undefined
+      audit_status: searchAuditStatus.value !== '' ? searchAuditStatus.value : undefined,
+      ordering: currentOrdering.value || '-create_time'
     }
 
     const res = await request.get('/jobs/', { params })

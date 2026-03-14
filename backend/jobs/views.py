@@ -62,7 +62,7 @@ class JobViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = JobFilter
     search_fields = ['job_name', 'description', 'requirements', 'company__company_name', 'search_keywords']
-    ordering_fields = ['create_time', 'views_count']
+    ordering_fields = ['create_time', 'views_count', 'collections_count', 'deliveries_count']
     pagination_class = JobPagination
 
     def get_permissions(self):

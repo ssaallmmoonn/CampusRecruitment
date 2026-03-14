@@ -5,7 +5,7 @@
       <el-header class="company-header">
         <div class="header-left">
           <div class="logo">
-            <span class="logo-text">三之文鱼招聘系统管理后台</span>
+            <span class="logo-text">三之文鱼招聘企业端后台</span>
           </div>
           <el-breadcrumb separator="/" class="breadcrumb">
             <el-breadcrumb-item :to="{ path: '/company/dashboard' }">首页</el-breadcrumb-item>
@@ -116,7 +116,7 @@ onMounted(() => {
 }
 
 .company-header {
-  background-color: #007bff; /* Blue header as per image */
+  background-color: #0078d4; /* Blue header as per image */
   color: white;
   display: flex;
   justify-content: space-between;
