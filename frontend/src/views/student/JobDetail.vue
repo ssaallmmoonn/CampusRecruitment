@@ -644,11 +644,11 @@ onMounted(() => {
 }
 
 .rec-header {
-  background-color: #e8ecef;
+  background-color: #3b93e6f1;
   padding: 12px;
   text-align: center;
   font-weight: bold;
-  color: #303133;
+  color: #ffffff;
   font-size: 15px;
 }
 
