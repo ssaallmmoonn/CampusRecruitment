@@ -22,9 +22,11 @@ class JobApplicationSerializer(serializers.ModelSerializer):
         read_only_fields = ('student', 'status', 'create_time', 'update_time')
 
 class JobApplicationCreateSerializer(serializers.ModelSerializer):
+    is_recommended = serializers.BooleanField(required=False, default=False)
+
     class Meta:
         model = JobApplication
-        fields = ('job', 'resume')
+        fields = ('job', 'resume', 'is_recommended')
 
     def validate(self, attrs):
         # Ensure the user is a student

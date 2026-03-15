@@ -104,8 +104,10 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         student = self.request.user.student_profile
         job = serializer.validated_data['job']
         
-        # Check if this was a recommended application
-        is_recommended = Recommendation.objects.filter(student=student, job=job).exists()
+        # Priority: 1. Passed from frontend, 2. Check Recommendation table
+        is_recommended = serializer.validated_data.get('is_recommended', False)
+        if not is_recommended:
+            is_recommended = Recommendation.objects.filter(student=student, job=job).exists()
         
         instance = serializer.save(is_recommended=is_recommended)
         

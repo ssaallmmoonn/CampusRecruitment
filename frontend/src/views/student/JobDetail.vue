@@ -92,70 +92,34 @@
             <el-button class="company-btn" plain round @click="goToCompanyDetail">查看企业详情</el-button>
           </div>
 
-          <!-- Recommendation Card (Mock) -->
-          <div class="recommend-card card-box">
+          <!-- Recommendation Card -->
+          <div class="recommend-card card-box" v-if="recommendations.length > 0">
             <div class="rec-header">
               你可能对这些职位感兴趣
             </div>
             
             <div class="rec-list">
-              <!-- Item 1 -->
-              <div class="rec-item">
+              <div 
+                v-for="rec in recommendations" 
+                :key="rec.job.id" 
+                class="rec-item"
+                @click="goToJobDetail(rec.job.id)"
+              >
                 <div class="rec-item-top">
-                  <div class="rec-item-title">前端软件开发工程师</div>
-                  <div class="rec-item-salary">10-20k</div>
+                  <div class="rec-item-title">{{ rec.job.job_name }}</div>
+                  <div class="rec-item-salary">{{ rec.job.salary }}</div>
                 </div>
                 <div class="rec-item-tags">
-                  <span class="rec-tag-pill">核心部门</span>
-                  <span class="rec-tag-pill">福利待遇</span>
-                  <span class="rec-tag-pill">五险一金</span>
+                  <span class="rec-tag-pill">{{ rec.job.job_type }}</span>
+                  <span class="rec-tag-pill">{{ rec.job.degree_requirement }}</span>
+                  <span class="rec-tag-pill">{{ rec.job.experience_requirement }}</span>
                 </div>
                 <div class="rec-item-bottom">
                   <div class="rec-company">
-                    <span class="company-badge yellow">美团</span>
-                    <span class="company-text">美团</span>
+                    <img :src="rec.job.company?.logo || defaultCompanyLogo" class="rec-company-logo" />
+                    <span class="company-text">{{ rec.job.company?.company_name }}</span>
                   </div>
-                  <div class="rec-status">已上市</div>
-                </div>
-              </div>
-
-              <!-- Item 2 -->
-              <div class="rec-item">
-                <div class="rec-item-top">
-                  <div class="rec-item-title">高级Java开发工程师</div>
-                  <div class="rec-item-salary">20-50k</div>
-                </div>
-                <div class="rec-item-tags">
-                  <span class="rec-tag-pill">个人成长</span>
-                  <span class="rec-tag-pill">晋升通道</span>
-                  <span class="rec-tag-pill">福利待遇好</span>
-                </div>
-                <div class="rec-item-bottom">
-                  <div class="rec-company">
-                    <span class="company-badge yellow">美团</span>
-                    <span class="company-text">美团</span>
-                  </div>
-                  <div class="rec-status">已上市</div>
-                </div>
-              </div>
-
-              <!-- Item 3 -->
-              <div class="rec-item">
-                <div class="rec-item-top">
-                  <div class="rec-item-title">Java软件开发工程师</div>
-                  <div class="rec-item-salary">20-50k</div>
-                </div>
-                <div class="rec-item-tags">
-                  <span class="rec-tag-pill">Java</span>
-                  <span class="rec-tag-pill">Springboot</span>
-                  <span class="rec-tag-pill">Vue</span>
-                </div>
-                <div class="rec-item-bottom">
-                  <div class="rec-company">
-                    <span class="company-badge red">拼</span>
-                    <span class="company-text">拼多多</span>
-                  </div>
-                  <div class="rec-status">已上市</div>
+                  <div class="rec-status">{{ rec.job.location }}</div>
                 </div>
               </div>
             </div>
@@ -194,9 +158,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getJobDetail } from '@/api/jobs'
+import { getRecommendations } from '@/api/recommendation'
 import { applyJob, getResumes, recordBehavior, toggleCollect, checkCollectStatus, checkApplicationStatus, cancelApplication } from '@/api/recruitment'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -207,9 +172,11 @@ const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
 const job = ref(null)
+const recommendations = ref([])
 const isCollected = ref(false)
 const isApplied = ref(false)
 const applicationId = ref(null)
+const isFromRecommendation = ref(false)
 const defaultCompanyLogo = 'https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png'
 
 // Application related
@@ -219,11 +186,34 @@ const applyForm = reactive({
   resume: ''
 })
 
+const fetchRecommendations = async () => {
+  try {
+    const currentJobId = route.params.id
+    const res = await getRecommendations({ page_size: 5 }) // Fetch a few more to allow filtering
+    let list = res.results || res
+    
+    // Filter out the current job and take the first 3
+    recommendations.value = list
+      .filter(item => item.job && String(item.job.id) !== String(currentJobId))
+      .slice(0, 3)
+  } catch (error) {
+    console.error('Failed to fetch recommendations:', error)
+  }
+}
+
 const fetchJobDetail = async () => {
   loading.value = true
   try {
     const id = route.params.id
     job.value = await getJobDetail(id)
+    
+    // Check if coming from recommendation
+    isFromRecommendation.value = route.query.from === 'recommendation'
+    
+    // Fetch recommendations for the sidebar (Only for students)
+    if (userStore.isLoggedIn && userStore.role === 1) {
+      fetchRecommendations()
+    }
     
     // Record browse behavior only if logged in
     if (userStore.isLoggedIn) {
@@ -309,7 +299,8 @@ const handleApply = async () => {
   try {
       await applyJob({
           job: job.value.id,
-          resume: applyForm.resume
+          resume: applyForm.resume,
+          is_recommended: isFromRecommendation.value
       })
       ElMessage.success('简历投递成功！')
       applyDialogVisible.value = false
@@ -359,6 +350,21 @@ const formatDate = (dateString) => {
   const date = new Date(dateString)
   return date.toLocaleDateString()
 }
+
+const goToJobDetail = (id) => {
+  router.push({
+    path: `/jobs/${id}`,
+    query: { from: 'recommendation' }
+  })
+  window.scrollTo(0, 0)
+}
+
+// Watch for route changes to refresh job detail for same component navigation
+watch(() => route.params.id, (newId) => {
+  if (newId && route.name === 'JobDetail') {
+    fetchJobDetail()
+  }
+})
 
 const goToCompanyDetail = () => {
   if (job.value && job.value.company) {
@@ -647,13 +653,19 @@ onMounted(() => {
 }
 
 .rec-list {
-  padding: 0 20px;
+  padding: 0 12px;
 }
 
 .rec-item {
-  padding: 15px 0;
+  padding: 15px 12px;
   border-bottom: 1px solid #f0f2f5;
   cursor: pointer;
+  margin: 0 -12px;
+  transition: background-color 0.2s;
+}
+
+.rec-item:hover {
+  background-color: #f5f7fa;
 }
 
 .rec-item:last-child {
@@ -703,28 +715,12 @@ onMounted(() => {
   align-items: center;
 }
 
-.company-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  height: 20px;
+.rec-company-logo {
+  width: 24px;
+  height: 24px;
   border-radius: 4px;
-  font-size: 12px;
-  margin-right: 6px;
-  font-weight: bold;
-}
-
-.company-badge.yellow {
-  background-color: #ffcc00;
-  color: #000;
-}
-
-.company-badge.red {
-  background-color: #f56c6c;
-  color: #fff;
-  width: 20px;
-  padding: 0;
+  margin-right: 8px;
+  object-fit: cover;
 }
 
 .company-text {

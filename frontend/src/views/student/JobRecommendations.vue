@@ -466,7 +466,10 @@ const changeStrategy = (val) => {
 
 const goToDetail = (id) => {
   if (id) {
-    router.push(`/jobs/${id}`);
+    router.push({
+      path: `/jobs/${id}`,
+      query: { from: 'recommendation' }
+    });
   }
 };
 
