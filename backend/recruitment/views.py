@@ -12,6 +12,7 @@ from .serializers import (
     ChatMessageSerializer
 )
 from jobs.models import Job
+from utils.search import JiebaSearchFilter, get_jieba_keywords
 
 class IsStudent(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -43,7 +44,7 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
     - Companies can view applications for their jobs and update status.
     """
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, JiebaSearchFilter]
     filterset_fields = ['status']
     search_fields = ['job__job_name', 'student__name', 'student__user__username']
     ordering_fields = ['create_time', 'update_time', 'unread_count']
@@ -190,7 +191,13 @@ class BehaviorViewSet(viewsets.ModelViewSet):
         # Custom filtering for job properties (which are in job_detail/job relation)
         search = self.request.query_params.get('search')
         if search:
-            queryset = queryset.filter(job__job_name__icontains=search)
+            keywords = get_jieba_keywords(search)
+            if keywords:
+                from django.db.models import Q
+                q_search = Q()
+                for k in keywords:
+                    q_search &= Q(job__job_name__icontains=k)
+                queryset = queryset.filter(q_search)
 
         is_applied = self.request.query_params.get('is_applied')
         if is_applied is not None:

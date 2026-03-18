@@ -23,7 +23,7 @@
 
               <!-- Admin Navigation -->
               <template v-if="userStore.role === 0">
-                <el-menu-item index="GO_BACK">管理后台</el-menu-item>
+                <el-menu-item index="/admin/dashboard">管理后台</el-menu-item>
               </template>
               
               <!-- Student / Guest Navigation -->
@@ -35,10 +35,9 @@
                 <el-menu-item index="/resume">我的简历</el-menu-item>
               </template>
 
-              <!-- Company Navigation (Keep for compatibility) -->
+              <!-- Company Navigation -->
               <template v-if="userStore.role === 2">
-                <el-menu-item index="/company/jobs">我的发布</el-menu-item>
-                <el-menu-item index="/company/applications">收到的投递</el-menu-item>
+                <el-menu-item index="/company/dashboard">管理后台</el-menu-item>
               </template>
             </el-menu>
           </div>
@@ -119,11 +118,6 @@ onMounted(() => {
 })
 
 const handleMenuSelect = (index) => {
-  if (index === 'GO_BACK') {
-    router.back()
-    return
-  }
-
   // Check login for protected routes
   const protectedRoutes = [
     '/recommendations', 

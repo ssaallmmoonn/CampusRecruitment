@@ -106,17 +106,12 @@ const defaultLogo = 'https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9
 const fetchHotJobs = async () => {
   loading.value = true
   try {
-    // Fetch jobs for this company
-    // Assuming backend supports filtering by company via user_id or company_id
-    // But currently JobViewSet filters mostly by text fields.
-    // Ideally backend should support ?company=id.
-    // Let's check backend/jobs/views.py again if I need to add company filter.
-    // For now, I'll try to fetch all and filter client side if backend doesn't support,
-    // OR add company filter to backend.
-    // Wait, Job model has 'company' FK. 
-    // DjangoFilterBackend usually supports exact match if field is in filterset_fields.
-    // Let's assume I can add 'company' to filterset_fields in backend.
-    const res = await getJobs({ company: props.company.id, page_size: 3 })
+    // Fetch jobs for this company, ordered by deliveries count descending to show hot jobs
+    const res = await getJobs({ 
+      company: props.company.id, 
+      page_size: 3,
+      ordering: '-deliveries_count'
+    })
     jobs.value = res.results || []
   } catch (error) {
     console.error(error)

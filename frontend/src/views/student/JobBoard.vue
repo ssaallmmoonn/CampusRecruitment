@@ -311,7 +311,7 @@
 
           <el-select 
             v-model="searchForm.company__industry" 
-            placeholder="公司行业" 
+            placeholder="企业行业" 
             clearable 
             class="filter-select"
             :class="{ 'active-filter': searchForm.company__industry }"
@@ -324,7 +324,7 @@
 
           <el-select 
             v-model="searchForm.company__nature" 
-            placeholder="公司性质" 
+            placeholder="企业性质" 
             clearable 
             class="filter-select"
             :class="{ 'active-filter': searchForm.company__nature }"
@@ -337,7 +337,7 @@
 
           <el-select 
             v-model="searchForm.company__scale" 
-            placeholder="公司规模" 
+            placeholder="企业规模" 
             clearable 
             class="filter-select"
             :class="{ 'active-filter': searchForm.company__scale }"

@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 
 const service = axios.create({
   baseURL: '/api', // Use relative path for proxy
-  timeout: 5000
+  timeout: 5000 // 15s timeout
 })
 
 // Request interceptor

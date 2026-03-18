@@ -173,14 +173,48 @@ const router = createRouter({
 
 // Navigation guard
 router.beforeEach((to, from, next) => {
-    const publicPages = ['/login', '/'];
-    const authRequired = !publicPages.includes(to.path);
-    const loggedIn = localStorage.getItem('user');
+    let user = null;
+    try {
+        const userStr = localStorage.getItem('user');
+        user = userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+        console.error('Failed to parse user from localStorage', e);
+        localStorage.removeItem('user');
+    }
+    const loggedIn = !!user;
 
-    // If trying to access a restricted page + not logged in
-    // For sub-routes like '/jobs', we could redirect to login,
-    // but Home.vue handles unauthenticated state by showing welcome screen.
-    // So we'll let it pass for now.
+    // 1. 如果已登录用户尝试访问登录页，直接跳转到对应后台或首页
+    if (to.path === '/login' && loggedIn) {
+        if (user.role === 0) return next('/admin');
+        if (user.role === 2) return next('/company');
+        return next('/');
+    }
+
+    // 2. 核心逻辑：如果管理员或企业访问首页/学生端页面，自动重定向到其后台
+    // 我们定义学生端页面的路径（这里简化为以 '/' 开头且不以 '/admin' 或 '/company' 开头的路径）
+    const isStudentPage = to.path === '/' || (to.path.startsWith('/') && !to.path.startsWith('/admin') && !to.path.startsWith('/company') && to.path !== '/login');
+    
+    if (loggedIn && isStudentPage) {
+        if (user.role === 0) {
+            return next('/admin/dashboard'); // 明确跳转到 dashboard
+        } else if (user.role === 2) {
+            return next('/company/dashboard'); // 明确跳转到 dashboard
+        }
+    }
+
+    // 3. 权限拦截：访问需要登录的页面
+    if (to.meta.requiresAuth && !loggedIn) {
+        return next('/login');
+    }
+
+    // 4. 角色权限拦截：确保用户访问的是其角色对应的后台
+    if (to.meta.role !== undefined && loggedIn && user.role !== to.meta.role) {
+        // 如果角色不匹配，跳转到其本该去的页面
+        if (user.role === 0) return next('/admin/dashboard');
+        if (user.role === 2) return next('/company/dashboard');
+        return next('/');
+    }
+
     next();
 })
 

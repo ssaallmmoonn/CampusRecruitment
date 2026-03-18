@@ -185,7 +185,8 @@ class JobSerializer(serializers.ModelSerializer):
         model = Job
         fields = '__all__'
         read_only_fields = ('company', 'views_count', 'collections_count', 
-                            'deliveries_count', 'create_time', 'update_time', 'is_applied')
+                            'deliveries_count', 'create_time', 'update_time', 
+                            'is_applied', 'takedown_reason')
 
     def get_is_applied(self, obj):
         request = self.context.get('request')

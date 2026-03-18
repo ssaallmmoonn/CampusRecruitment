@@ -71,3 +71,26 @@ export function getMajorCategoryTree() {
     method: 'get'
   })
 }
+
+export function applyTakedown(id, reason) {
+  return request({
+    url: `/jobs/${id}/apply-takedown/`,
+    method: 'post',
+    data: { reason }
+  })
+}
+
+export function approveTakedown(id, reason) {
+  return request({
+    url: `/jobs/${id}/approve-takedown/`,
+    method: 'post',
+    data: { reason }
+  })
+}
+
+export function republishJob(id) {
+  return request({
+    url: `/jobs/${id}/republish/`,
+    method: 'post'
+  })
+}

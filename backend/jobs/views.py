@@ -9,9 +9,12 @@ from .models import Job, JobCategory, MajorCategory
 from .serializers import JobSerializer, JobCreateSerializer, JobCategoryTreeSerializer, MajorCategoryTreeSerializer, JobCategoryAdminSerializer, JobCategoryAdminTreeSerializer, MajorCategoryAdminSerializer, MajorCategoryAdminTreeSerializer
 from users.models import Company, User
 from users.serializers import CompanySerializer
+from utils.search import JiebaSearchFilter
 import random
 import json
 import os
+import re
+import jieba
 from django.conf import settings
 
 class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
@@ -59,7 +62,7 @@ class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     # Allow any user to read (list/retrieve) jobs, but only authenticated companies/owners to write
     permission_classes = [permissions.IsAuthenticatedOrReadOnly] 
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, JiebaSearchFilter, filters.OrderingFilter]
     filterset_class = JobFilter
     search_fields = ['job_name', 'description', 'requirements', 'company__company_name', 'search_keywords']
     ordering_fields = ['create_time', 'views_count', 'collections_count', 'deliveries_count']
@@ -209,6 +212,73 @@ class JobViewSet(viewsets.ModelViewSet):
         
         return Response(locations)
 
+    @action(detail=True, methods=['post'], url_path='apply-takedown')
+    def apply_takedown(self, request, pk=None):
+        """企业申请下架职位"""
+        job = self.get_object()
+        user = request.user
+        
+        # 权限检查：只有发布职位的企业用户可以申请下架
+        if user.role != 2 or job.company.user != user:
+            return Response({"detail": "您没有权限申请下架此职位"}, status=status.HTTP_403_FORBIDDEN)
+            
+        reason = request.data.get('reason')
+        if not reason:
+            return Response({"detail": "请填写下架理由"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        job.audit_status = 4  # 申请下架
+        job.takedown_reason = reason
+        job.save()
+        
+        return Response({"detail": "下架申请已提交，请等待管理员审核"})
+
+    @action(detail=True, methods=['post'], url_path='approve-takedown')
+    def approve_takedown(self, request, pk=None):
+        """管理员核准或主动下架职位"""
+        job = self.get_object()
+        user = request.user
+        
+        # 权限检查：只有管理员可以执行此操作
+        if user.role != 0:
+            return Response({"detail": "您没有权限执行此操作"}, status=status.HTTP_403_FORBIDDEN)
+            
+        # 允许对“已通过(1)”或“申请下架(4)”的职位进行下架
+        if job.audit_status not in [1, 4]:
+            return Response({"detail": "当前职位状态无法执行下架操作"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        reason = request.data.get('reason')
+        if not reason:
+            # 如果是企业主动申请的，且管理员没写新理由，可以沿用企业的理由
+            if job.audit_status == 4 and job.takedown_reason:
+                reason = job.takedown_reason
+            else:
+                return Response({"detail": "请填写下架理由"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        job.audit_status = 3  # 已下架
+        job.takedown_reason = reason
+        job.save()
+        
+        return Response({"detail": "职位已成功下架"})
+
+    @action(detail=True, methods=['post'], url_path='republish')
+    def republish(self, request, pk=None):
+        """企业重新上架已下架的职位（进入待审核状态）"""
+        job = self.get_object()
+        user = request.user
+        
+        # 权限检查
+        if user.role != 2 or job.company.user != user:
+            return Response({"detail": "您没有权限上架此职位"}, status=status.HTTP_403_FORBIDDEN)
+            
+        if job.audit_status != 3:
+            return Response({"detail": "只有已下架的职位可以重新上架"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        job.audit_status = 0  # 待审核
+        job.takedown_reason = None # 清空下架理由
+        job.save()
+        
+        return Response({"detail": "职位已重新提交审核"})
+
 class JobCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = JobCategory.objects.all()
     serializer_class = JobCategoryTreeSerializer
@@ -317,12 +387,72 @@ class DashboardViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'], url_path='selected-jobs')
     def selected_jobs(self, request):
-        jobs = Job.objects.filter(audit_status=1)
-        if jobs.count() < 9:
+        user = request.user
+        limit = 9
+        all_approved_jobs = Job.objects.filter(audit_status=1)
+        
+        # 1. 如果是已登录学生且有求职意向，采用多级推荐策略
+        if user.is_authenticated and user.role == 1:
+            student = getattr(user, 'student_profile', None)
+            if student and student.job_intention:
+                from recommendation.models import Recommendation
+                final_job_ids = []
+                
+                # A. 优先尝试 CF 结果 (基于协同过滤)
+                recs = Recommendation.objects.filter(
+                    student=student, 
+                    job__audit_status=1
+                ).order_by('-score_hybrid').values_list('job_id', flat=True)[:limit]
+                final_job_ids.extend(list(recs))
+                
+                # B. 如果不足9个，尝试冷启动：关键词匹配求职意向 (Intention Match)
+                if len(final_job_ids) < limit:
+                    # 使用 jieba 进行中文分词 (搜索引擎模式)
+                    # 搜索引擎模式会倾向于将长词切得更细，增加匹配概率
+                    jieba_keywords = list(jieba.cut_for_search(student.job_intention))
+                    # 过滤掉单字词（通常是助词或意义不大的词）和空白符
+                    keywords = [k.strip() for k in jieba_keywords if len(k.strip()) > 1]
+                    
+                    if not keywords:
+                        # 兜底：如果分词后没结果，使用原有的正则简单分词
+                        keywords = [k for k in re.split(r'[\s/、,，]+', student.job_intention) if k]
+                    
+                    if keywords:
+                        q_intention = Q()
+                        for k in keywords:
+                            # 只要 职位名称 或 职位分类 中包含任意一个分词关键词即可
+                            q_intention |= Q(job_name__icontains=k) | Q(job_category__name__icontains=k)
+                        
+                        intention_jobs = all_approved_jobs.filter(q_intention).exclude(id__in=final_job_ids).order_by('?')[:limit - len(final_job_ids)]
+                        final_job_ids.extend(list(intention_jobs.values_list('id', flat=True)))
+                
+                # C. 如果依然不足9个，匹配专业 (Major Match)
+                if len(final_job_ids) < limit and student.major:
+                    major_jobs = all_approved_jobs.filter(
+                        Q(major__name__icontains=student.major) | Q(major_requirement__icontains=student.major)
+                    ).exclude(id__in=final_job_ids).order_by('?')[:limit - len(final_job_ids)]
+                    final_job_ids.extend(list(major_jobs.values_list('id', flat=True)))
+                
+                # D. 最后使用热门职位填充 (Popularity Fill)
+                if len(final_job_ids) < limit:
+                    popular_jobs = all_approved_jobs.exclude(id__in=final_job_ids).order_by('-deliveries_count', '-views_count')[:limit - len(final_job_ids)]
+                    final_job_ids.extend(list(popular_jobs.values_list('id', flat=True)))
+                
+                # 按顺序查询并返回 (保持优先级)
+                # 使用 in_bulk 或手动排序
+                job_dict = Job.objects.in_bulk(final_job_ids)
+                sorted_jobs = [job_dict[jid] for jid in final_job_ids if jid in job_dict]
+                serializer = JobSerializer(sorted_jobs, many=True)
+                return Response(serializer.data)
+
+        # 2. 兜底逻辑：随机或热门展示
+        if all_approved_jobs.count() < limit:
             self._generate_mock_jobs()
-            jobs = Job.objects.filter(audit_status=1)
+            all_approved_jobs = Job.objects.filter(audit_status=1)
             
-        serializer = JobSerializer(jobs.order_by('?')[:9], many=True)
+        # 默认返回热门职位
+        final_jobs = all_approved_jobs.order_by('-deliveries_count', '-views_count', '?')[:limit]
+        serializer = JobSerializer(final_jobs, many=True)
         return Response(serializer.data)
 
     def _generate_mock_companies(self):

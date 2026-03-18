@@ -56,6 +56,7 @@
                 <el-option label="通过" :value="4" />
                 <el-option label="面试中" :value="2" />
                 <el-option label="不合适" :value="3" />
+                <el-option label="不通过" :value="5" />
                 <el-option label="已查看" :value="1" />
                 <el-option label="未查看" :value="0" />
             </el-select>
@@ -288,7 +289,7 @@ const getStatusType = (status) => {
     2: 'warning',
     3: 'danger',
     4: 'success',
-    5: 'info'
+    5: 'danger'
   }
   return map[status] || 'info'
 }

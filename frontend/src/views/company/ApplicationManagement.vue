@@ -76,7 +76,7 @@
           <template #default="scope">
              <div class="action-buttons">
                 <el-button 
-                    type="danger" 
+                    type="warning" 
                     size="small" 
                     @click="handleStatusUpdate(scope.row, 3)"
                     :disabled="scope.row.status === 3"
@@ -94,7 +94,7 @@
                     :disabled="scope.row.status === 4"
                 >通过</el-button>
                 <el-button 
-                    type="warning" 
+                    type="danger" 
                     size="small" 
                     @click="handleStatusUpdate(scope.row, 5)"
                     :disabled="scope.row.status === 5"
@@ -367,7 +367,7 @@ const getStatusType = (status) => {
         case 2: return 'primary' // 面试中 - Blue
         case 3: return 'danger'  // 不合适 - Red
         case 4: return 'success' // 通过 - Green
-        case 5: return 'warning' // 不通过 - Orange
+        case 5: return 'danger'  // 不通过 - Red
         default: return 'info'
     }
 }

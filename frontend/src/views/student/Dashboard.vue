@@ -140,7 +140,7 @@
     </div>
 
     <!-- Brand Zone -->
-    <div class="brand-zone">
+    <div class="brand-zone container">
       <div class="section-header">
         <el-icon class="header-icon"><PriceTag /></el-icon>
         <h2 class="section-title">品牌专区</h2>
@@ -163,11 +163,13 @@
     </div>
 
     <!-- Selected Jobs -->
-    <div class="selected-jobs">
+    <div class="selected-jobs container">
       <div class="section-header">
         <el-icon class="header-icon"><Suitcase /></el-icon>
         <h2 class="section-title">精选职位</h2>
-        <span class="section-subtitle">根据求职意向匹配</span>
+        <span class="section-subtitle">
+          {{ userStore.isLoggedIn && userStore.userInfo?.job_intention ? '根据求职意向匹配' : '填写个人资料的求职意愿来获得职位的精准推荐' }}
+        </span>
       </div>
       <div class="jobs-grid">
         <div v-for="job in selectedJobs" :key="job.id" class="job-card" @click="$router.push(`/jobs/${job.id}`)">
@@ -916,7 +918,7 @@ const cancelClear = () => {
 
 .brand-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -930,6 +932,8 @@ const cancelClear = () => {
   transition: transform 0.3s, box-shadow 0.3s;
   cursor: pointer;
   border: 1px solid #ebeef5;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .brand-card:hover {
@@ -973,7 +977,7 @@ const cancelClear = () => {
 
 .jobs-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -988,6 +992,8 @@ const cancelClear = () => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .job-card:hover {

@@ -7,6 +7,7 @@ class Job(models.Model):
         (1, '通过'),
         (2, '驳回'),
         (3, '下架'),
+        (4, '申请下架'),
     )
 
     DEGREE_CHOICES = (
@@ -50,6 +51,7 @@ class Job(models.Model):
     major_requirement = models.CharField(max_length=50, blank=True, verbose_name='专业要求') # Legacy, or text description
     search_keywords = models.JSONField(default=list, blank=True, verbose_name='搜索关键词')
     reject_reason = models.CharField(max_length=200, blank=True, null=True, verbose_name='驳回原因')
+    takedown_reason = models.CharField(max_length=200, blank=True, null=True, verbose_name='下架原因')
 
     def __str__(self):
         return self.job_name

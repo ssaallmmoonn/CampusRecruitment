@@ -28,6 +28,7 @@
           <el-option label="通过" :value="1" />
           <el-option label="驳回" :value="2" />
           <el-option label="已下架" :value="3" />
+          <el-option label="申请下架" :value="4" />
         </el-select>
         <el-button type="primary" @click="handleSearch">查询</el-button>
         <el-button type="warning" @click="handleReset">重置</el-button>
@@ -41,7 +42,7 @@
         @selection-change="handleSelectionChange"
         @sort-change="handleSortChange"
       >
-        <el-table-column type="selection" width="55" />
+        <el-table-column type="selection" width="40" />
         <el-table-column prop="job_name" label="职位名称" min-width="150" show-overflow-tooltip />
         <el-table-column label="招聘企业" min-width="150" show-overflow-tooltip>
           <template #default="scope">
@@ -60,7 +61,7 @@
         <el-table-column prop="views_count" label="浏览量" width="90" sortable="custom" />
         <el-table-column prop="collections_count" label="收藏量" width="90" sortable="custom" />
         <el-table-column prop="deliveries_count" label="投递量" width="90" sortable="custom" />
-        <el-table-column label="职位描述与要求" width="150" align="center">
+        <el-table-column label="职位描述与要求" width="125" align="center">
           <template #default="scope">
             <el-button type="primary" size="small" @click="handleViewDescription(scope.row)">
               点击查看
@@ -69,25 +70,41 @@
         </el-table-column>
         <el-table-column label="职位状态" width="100" align="center">
           <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.audit_status)">
+            <el-popover
+              v-if="scope.row.audit_status === 4"
+              placement="top-start"
+              title="下架理由"
+              :width="200"
+              trigger="hover"
+              :content="scope.row.takedown_reason || '未说明理由'"
+            >
+              <template #reference>
+                <el-tag :type="getStatusType(scope.row.audit_status)" style="cursor: help">
+                  {{ getStatusLabel(scope.row.audit_status) }}
+                </el-tag>
+              </template>
+            </el-popover>
+            <el-tag v-else :type="getStatusType(scope.row.audit_status)">
               {{ getStatusLabel(scope.row.audit_status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="scope">
             <div class="action-buttons">
+              <!-- 审核通过按钮 -->
               <el-button
-                v-if="scope.row.audit_status === 0 || scope.row.audit_status === 2"
+                v-if="scope.row.audit_status !== 1"
                 type="success"
                 circle
                 size="small"
                 @click="handleApprove(scope.row)"
+                title="通过审核"
               >
                 <el-icon><Check /></el-icon>
               </el-button>
               <el-button
-                v-if="scope.row.audit_status === 1"
+                v-else
                 type="success"
                 circle
                 size="small"
@@ -95,8 +112,20 @@
               >
                 <el-icon><Check /></el-icon>
               </el-button>
+
+              <!-- 驳回按钮 -->
               <el-button
-                v-if="scope.row.audit_status === 2"
+                v-if="scope.row.audit_status === 0 || scope.row.audit_status === 1 || scope.row.audit_status === 4"
+                type="danger"
+                circle
+                size="small"
+                @click="handleReject(scope.row)"
+                title="驳回申请"
+              >
+                <el-icon><Close /></el-icon>
+              </el-button>
+              <el-button
+                v-else
                 type="danger"
                 circle
                 size="small"
@@ -104,20 +133,26 @@
               >
                 <el-icon><Close /></el-icon>
               </el-button>
+
+              <!-- 核准下架按钮 (长期存在于驳回右侧) -->
               <el-button
-                v-if="scope.row.audit_status === 0 || scope.row.audit_status === 1"
-                type="danger"
+                type="warning"
                 circle
                 size="small"
-                @click="handleReject(scope.row)"
+                @click="handleTakedown(scope.row)"
+                :disabled="scope.row.audit_status !== 1 && scope.row.audit_status !== 4"
+                title="核准下架"
               >
-                <el-icon><Close /></el-icon>
+                <el-icon><Bottom /></el-icon>
               </el-button>
+
+              <!-- 删除按钮 -->
               <el-button
                 type="danger"
                 circle
                 size="small"
                 @click="handleDelete(scope.row)"
+                title="删除职位"
               >
                 <el-icon><Delete /></el-icon>
               </el-button>
@@ -170,14 +205,35 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- Takedown Reason Dialog -->
+    <el-dialog v-model="takedownDialogVisible" title="职位下架" width="600px">
+      <el-form :model="takedownForm" label-width="80px">
+        <el-form-item label="下架原因">
+          <el-input
+            v-model="takedownForm.reason"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入下架原因"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="takedownDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmTakedown" :loading="submitting">确认下架</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Close, Delete } from '@element-plus/icons-vue'
+import { Check, Close, Delete, Bottom } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { approveTakedown } from '@/api/jobs'
 import jobsData from '@/assets/jobs.json'
 
 const loading = ref(false)
@@ -196,6 +252,12 @@ const currentJob = ref(null)
 
 const rejectDialogVisible = ref(false)
 const rejectForm = reactive({
+  id: null,
+  reason: ''
+})
+
+const takedownDialogVisible = ref(false)
+const takedownForm = reactive({
   id: null,
   reason: ''
 })
@@ -302,12 +364,12 @@ const handleViewDescription = (row) => {
 }
 
 const getStatusLabel = (status) => {
-  const map = { 0: '待审核', 1: '审核通过', 2: '已驳回', 3: '已下架' }
+  const map = { 0: '待审核', 1: '审核通过', 2: '已驳回', 3: '已下架', 4: '申请下架' }
   return map[status] || '未知'
 }
 
 const getStatusType = (status) => {
-  const map = { 0: 'warning', 1: 'success', 2: 'danger', 3: 'info' }
+  const map = { 0: 'warning', 1: 'success', 2: 'danger', 3: 'info', 4: 'warning' }
   return map[status] || 'info'
 }
 
@@ -325,6 +387,33 @@ const handleApprove = async (row) => {
       console.error(error)
       ElMessage.error('操作失败')
     }
+  }
+}
+
+const handleTakedown = (row) => {
+  takedownForm.id = row.id
+  // 如果企业已经申请了，预填企业的理由
+  takedownForm.reason = row.audit_status === 4 ? row.takedown_reason : ''
+  takedownDialogVisible.value = true
+}
+
+const confirmTakedown = async () => {
+  if (!takedownForm.reason.trim()) {
+    ElMessage.warning('请输入下架原因')
+    return
+  }
+  
+  submitting.value = true
+  try {
+    await approveTakedown(takedownForm.id, takedownForm.reason)
+    ElMessage.success('职位已下架')
+    takedownDialogVisible.value = false
+    fetchData()
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('操作失败')
+  } finally {
+    submitting.value = false
   }
 }
 

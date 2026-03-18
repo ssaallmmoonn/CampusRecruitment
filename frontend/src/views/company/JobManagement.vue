@@ -61,16 +61,46 @@
                 <el-tag type="danger" style="cursor: pointer">审核失败</el-tag>
               </template>
             </el-popover>
-            <el-tag type="info" v-if="scope.row.audit_status === 3">已下架</el-tag>
+            <el-popover
+              v-if="scope.row.audit_status === 3"
+              placement="top-start"
+              title="下架理由"
+              :width="200"
+              trigger="hover"
+              :content="scope.row.takedown_reason || '管理员已执行下架操作'"
+            >
+              <template #reference>
+                <el-tag type="info" style="cursor: help">已下架</el-tag>
+              </template>
+            </el-popover>
+            <el-tag type="warning" v-if="scope.row.audit_status === 4">申请下架</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
-            <el-button type="primary" circle size="small" @click="handleEdit(scope.row)">
-               <el-icon><Edit /></el-icon>
+            <el-button type="primary" size="small" @click="handleEdit(scope.row)">
+              编辑
             </el-button>
-            <el-button type="danger" circle size="small" @click="handleDelete(scope.row)">
-               <el-icon><Delete /></el-icon>
+            <el-button 
+              type="warning" 
+              size="small" 
+              @click="showTakedownDialog(scope.row)"
+              :disabled="scope.row.audit_status === 4"
+              v-if="scope.row.audit_status === 1 || scope.row.audit_status === 4"
+            >
+              {{ scope.row.audit_status === 4 ? '下架' : '下架' }}
+            </el-button>
+            <el-button 
+              v-if="scope.row.audit_status === 3 || scope.row.audit_status === 0" 
+              type="success" 
+              size="small" 
+              @click="handleRepublish(scope.row)"
+              :disabled="scope.row.audit_status === 0"
+            >
+              {{ scope.row.audit_status === 0 ? '上架' : '上架' }}
+            </el-button>
+            <el-button type="danger" size="small" @click="handleDelete(scope.row)">
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -244,14 +274,33 @@
       </template>
     </el-dialog>
 
+    <!-- Takedown Reason Dialog -->
+    <el-dialog v-model="takedownDialogVisible" title="申请下架职位" width="400px">
+      <el-form :model="takedownForm" ref="takedownFormRef" :rules="takedownRules">
+        <el-form-item label="下架理由" prop="reason">
+          <el-input 
+            type="textarea" 
+            v-model="takedownForm.reason" 
+            placeholder="请输入下架职位的理由" 
+            :rows="3" 
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="takedownDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitTakedown" :loading="takedownLoading">确定提交</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { getJobs, createJob, updateJob, deleteJob, getJobCategoryTree, getMajorCategoryTree } from '@/api/jobs'
+import { getJobs, createJob, updateJob, deleteJob, getJobCategoryTree, getMajorCategoryTree, applyTakedown, republishJob } from '@/api/jobs'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, Delete } from '@element-plus/icons-vue'
 import provinceData from '@/assets/provinces.json'
 
 const loading = ref(false)
@@ -274,6 +323,18 @@ const jobDialogVisible = ref(false)
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const jobFormRef = ref(null)
+
+// Takedown state
+const takedownDialogVisible = ref(false)
+const takedownLoading = ref(false)
+const takedownFormRef = ref(null)
+const takedownForm = reactive({
+  id: null,
+  reason: ''
+})
+const takedownRules = {
+  reason: [{ required: true, message: '请输入下架理由', trigger: 'blur' }]
+}
 
 const jobCategoryOptions = ref([])
 const majorOptions = ref([])
@@ -446,6 +507,55 @@ const handleDelete = (row) => {
         fetchData()
       } catch (error) {
         ElMessage.error('删除失败')
+      }
+    })
+    .catch(() => {})
+}
+
+const showTakedownDialog = (row) => {
+  takedownForm.id = row.id
+  takedownForm.reason = ''
+  takedownDialogVisible.value = true
+}
+
+const submitTakedown = async () => {
+  if (!takedownFormRef.value) return
+  await takedownFormRef.value.validate(async (valid) => {
+    if (valid) {
+      takedownLoading.value = true
+      try {
+        await applyTakedown(takedownForm.id, takedownForm.reason)
+        ElMessage.success('下架申请已提交')
+        takedownDialogVisible.value = false
+        fetchData()
+      } catch (error) {
+        console.error(error)
+        ElMessage.error('申请下架失败')
+      } finally {
+        takedownLoading.value = false
+      }
+    }
+  })
+}
+
+const handleRepublish = (row) => {
+  ElMessageBox.confirm(
+    '确定要重新上架该职位吗？重新上架后需要管理员审核。',
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'info',
+    }
+  )
+    .then(async () => {
+      try {
+        await republishJob(row.id)
+        ElMessage.success('已重新提交上架审核')
+        fetchData()
+      } catch (error) {
+        console.error(error)
+        ElMessage.error('上架申请失败')
       }
     })
     .catch(() => {})

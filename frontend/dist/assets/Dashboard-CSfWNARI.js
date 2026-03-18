@@ -1,1 +1,0 @@
-import{_ as a}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{a as s,c as r,d as o}from"./index-D2SrBNIp.js";const t={},c={class:"dashboard-container"};function n(d,e){return s(),r("div",c,[...e[0]||(e[0]=[o("h2",null,"欢迎来到管理员后台",-1),o("p",null,"这里是系统首页，您可以在左侧菜单进行系统管理操作。",-1)])])}const l=a(t,[["render",n],["__scopeId","data-v-6fb3fecc"]]);export{l as default};
