@@ -87,7 +87,7 @@
 						</p>
 						<p
 							class="beian-hover"
-							onclick="window.location.href = 'https://beian.mit.gov.cn/'"
+							onclick="window.open('https://beian.miit.gov.cn/', '_blank')"
 							style="cursor: pointer"
 						>
 							粤ICP备 2026029215号-2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 粤公网安备

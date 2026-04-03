@@ -81,7 +81,7 @@
 					<div class="footer-bottom">
 						<div class="footer-content">
 							<p
-								onclick="window.location.href = 'https://beian.mit.gov.cn/'"
+								onclick="window.open('https://beian.miit.gov.cn/', '_blank')"
 								style="cursor: pointer"
 								class="beian-hover"
 							>

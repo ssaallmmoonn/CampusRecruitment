@@ -1,0 +1,1 @@
+import{s as e}from"./_plugin-vue_export-helper-C5-qLZXT.js";function a(r){return e({url:`/users/companies/${r}/`,method:"get"})}function s(r,o){return e({url:"/users/profile/",method:"patch",data:o})}function n(){return e({url:"/users/company-dashboard/",method:"get"})}export{n as a,a as g,s as u};
