@@ -101,6 +101,10 @@
         <el-icon><HomeFilled /></el-icon> 返回首页
       </el-button>
     </div>
+    <div class="beian-info">
+      <a href="https://beian.mit.gov.cn/" target="_blank">粤ICP备202604XXXX号-1</a>
+      <a href="https://beian.mit.gov.cn/" target="_blank">粤公网安备4401130200XXXX号</a>
+    </div>
   </div>
 </template>
 
@@ -256,5 +260,22 @@ const handleRegister = async () => {
   text-align: center;
   font-size: 20px;
   font-weight: bold;
+}
+.beian-info {
+  position: absolute;
+  bottom: 5px;
+  display: flex;
+  gap: 50px;
+  font-size: 12px;
+  color: #fff;
+}
+.beian-info a {
+  color: #000000;
+  text-decoration: none;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+.beian-info a:hover {
+  opacity: 1;
 }
 </style>
