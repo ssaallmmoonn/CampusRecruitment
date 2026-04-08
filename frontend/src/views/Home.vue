@@ -81,18 +81,27 @@
 			<div class="site-footer">
 				<div class="footer-bottom">
 					<div class="footer-content">
-						<p class="beian-hover" style="cursor: pointer">
+						<p class="beian-hover" style="cursor: pointer;">
 							未经 salmonjob.fun 同意，不得转载本网站之所有招聘信息及作品
 							三之文鱼招聘网版权所有
 						</p>
-						<p
-							class="beian-hover"
-							onclick="window.open('https://beian.miit.gov.cn/', '_blank')"
-							style="cursor: pointer"
-						>
-							粤ICP备 2026029215号-2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 粤公网安备
-							440113XXXXXXXX号（公安备案审核中）
-						</p>
+						<div class="beian-row">
+							<p
+								class="beian-hover"
+								onclick="window.open('https://beian.miit.gov.cn/', '_blank')"
+								style="cursor: pointer;"
+							>
+								粤ICP备 2026029215号-2
+							</p>
+							<p
+								class="beian-hover"	
+								onclick="window.open('https://beian.mps.gov.cn/portal/registerSystemInfo?recordcode=44011302005394', '_blank')"
+								style="cursor: pointer;"
+							>
+								<img src="@/assets/公安备案.png" style="vertical-align:middle; margin-right:4px; width: 15px;" alt="公安备案图标">
+								粤公网安备44011302005394号
+							</p>
+						</div>
 						<div class="footer-icons">
 							<span class="icon-placeholder">
 								<el-icon><Trophy /></el-icon>
@@ -302,6 +311,12 @@ const handleCommand = (command) => {
 
 .footer-bottom p {
 	margin: 5px 0;
+}
+
+.beian-row {
+	display: flex;
+	justify-content: center;
+	gap: 40px;
 }
 
 .beian-hover:hover {

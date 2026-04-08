@@ -74,8 +74,15 @@
 									style="cursor: pointer"
 									class="beian-hover"
 								>
-									粤ICP备 2026029215号-2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 粤公网安备
-									440113XXXXXXXX号（公安备案审核中）
+									粤ICP备 2026029215号-2
+								</p>
+								<p
+									class="beian-hover"	
+									onclick="window.open('https://beian.mps.gov.cn/portal/registerSystemInfo?recordcode=44011302005394', '_blank')"
+									style="cursor: pointer;"
+								>
+									<img src="@/assets/公安备案.png" style="vertical-align:middle; margin-right:4px; width: 15px;" alt="公安备案图标">
+									粤公网安备44011302005394号
 								</p>
 							</div>
 						</div>
@@ -216,7 +223,8 @@ onMounted(() => {
 	max-width: 1200px;
 	margin: 0 auto;
 	display: flex;
-	justify-content: space-between;
+	gap: 40px;
+	justify-content: center;
 	align-items: center;
 	padding: 0 20px;
 }
@@ -230,9 +238,6 @@ onMounted(() => {
 	text-align: center;
 }
 
-.footer-bottom .footer-content {
-	flex-direction: column;
-}
 
 .footer-bottom p {
 	margin: 5px 0;
